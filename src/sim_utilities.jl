@@ -74,7 +74,7 @@ function run_permutationtest_distributed(n_workers, nRep, simMod,args...)
     @showprogress @distributed for k = 1:nRep
         #println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
         #res = [1,1.]#
-        res = run_permutationtest(MersenneTwister(k), deepcopy(simMod),args...)
+        res = run_permutationtest(MersenneTwister(5000+k), deepcopy(simMod),args...)
         
         β_permResult[k, :] .= res[1]
         z_permResult[k, :] .= res[2]

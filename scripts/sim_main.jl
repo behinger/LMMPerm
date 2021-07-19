@@ -39,13 +39,13 @@ paramList = Dict(
 
 paramList = Dict(
     "f" => f3,
-    "σs" => [[[1.], [1.]],[[1.], [4.]]],
+    "σs" => [[[1.], [1.]],[[1.], [2.]],[[1.], [3.]],[[1.], [4.]]],
     "σ" => 1.,
     "β" => [[0., 0.]],
     "blupMethod" => ["olsranef"],
     "residualMethod" => [:signflip],
-    "nRep" => [5000],
-    "nPerm"=> [1000],
+    "nRep" => [10000],
+    "nPerm"=> [2000],
     "analysisCoding"=> DummyCoding,
     "simulationCoding" => DummyCoding
 )
@@ -88,7 +88,7 @@ res = run_permutationtest(MersenneTwister(5),simMod,
                 dl["residualMethod"], getfield(Main,Meta.parse(dl["blupMethod"])),dl["analysisCoding"],dl["f"])
 
 ##---
-nWorkers=20
+nWorkers=40
 for dl = dict_list(paramList)
     println(dl)
     dl_save =deepcopy(dl)
@@ -116,8 +116,9 @@ for dl = dict_list(paramList)
 end
 
 ##---- Load & Analze
-c = collect_results(datadir("simulations_1timepoint"))
-c[!,"<0.05"] = [sum(r.results[r.results.h1.=="1",:].z .<=0.05)/r.nRep for r in eachrow(c)]
+c = collect_results(datadir("sim"))
+c[!,"z<0.05"] = [sum(r.results[r.results.h1.=="1",:].z .<=0.05)/r.nRep for r in eachrow(c)]
+c[!,"β<0.05"] = [sum(r.results[r.results.h1.=="1",:].β .<=0.05)/r.nRep for r in eachrow(c)]
 
 c[!,["f","blupMethod","residualMethod","σs","<0.05","analysisCoding","simulationCoding"]]
 
@@ -144,19 +145,19 @@ d[!,"nPerm"] = vcat(repeat.([[x] for x in c.nPerm],size.(c.results,1))...)
 
 
 using DataFrames, AlgebraOfGraphics,Makie
+using GLMakie
+
+data(d[d.h1.=="1",:]) * mapping(:β,color=:σs,dodge=:σs,layout=:σs) * AlgebraOfGraphics.histogram(bins=0:0.01:1) |>draw
 
 
-data(d[d.h1.=="1",:]) * mapping(:z,color=:σs,layout_x=:blupMethod,layout_y=:residualMethod) * AlgebraOfGraphics.histogram(bins=0:0.01:1) |>draw()
-
-
-data(d) * mapping(:β,color=:h1,layout_x=:blupMethod,layout_y=:residualMethod) * AlgebraOfGraphics.density() |>draw()
+data(d) * mapping(:β,color=:h1,layout_x=:blupMethod,layout_y=:residualMethod) * AlgebraOfGraphics.density() |>draw
 
 data(d[d.h1.=="1",:]) * mapping(:z,color=:σs,layout_x=:blupMethod,layout_y=:residualMethod) * AlgebraOfGraphics.density() |>draw()
 
 
 
-data(c) * mapping(:σs,Symbol("<0.05"),color=:f,marker=:nRep,layout_x=:blupMethod,layout_y=:residualMethod) *visual(Scatter) |>draw()
-
+d = data(stack(c,[Symbol("z<0.05"),Symbol("β<0.05")])) * mapping(:σs,:value,color=:variable) *visual(Scatter) |>draw
+hlines!(d.grid[1,1].axis,[0.05],color="black")
 ##---
 
 p = data(c[(c.blupMethod.=="olsranefjf").&(c.residualMethod.=="signflip"),:]) * 
