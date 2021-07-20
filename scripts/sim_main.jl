@@ -88,6 +88,7 @@ res = run_permutationtest(MersenneTwister(5),simMod,
                 dl["residualMethod"], getfield(Main,Meta.parse(dl["blupMethod"])),dl["analysisCoding"],dl["f"])
 
 ##---
+
 nWorkers=40
 for dl = dict_list(paramList)
     println(dl)
@@ -120,7 +121,7 @@ c = collect_results(datadir("sim"))
 c[!,"z<0.05"] = [sum(r.results[r.results.h1.=="1",:].z .<=0.05)/r.nRep for r in eachrow(c)]
 c[!,"β<0.05"] = [sum(r.results[r.results.h1.=="1",:].β .<=0.05)/r.nRep for r in eachrow(c)]
 
-c[!,["f","blupMethod","residualMethod","σs","<0.05","analysisCoding","simulationCoding"]]
+c[!,["f","blupMethod","residualMethod","σs","β<0.05","z<0.05","analysisCoding","simulationCoding"]]
 
 
 
@@ -148,6 +149,9 @@ using DataFrames, AlgebraOfGraphics,Makie
 using GLMakie
 
 data(d[d.h1.=="1",:]) * mapping(:β,color=:σs,dodge=:σs,layout=:σs) * AlgebraOfGraphics.histogram(bins=0:0.01:1) |>draw
+
+data(d[d.h1.=="1",:]|>x->stack(x,[Symbol("z"),Symbol("β")])) * mapping(:value,color=:σs,col=:σs,row=:variable) * AlgebraOfGraphics.histogram(bins=0:0.01:1) |>draw
+
 
 
 data(d) * mapping(:β,color=:h1,layout_x=:blupMethod,layout_y=:residualMethod) * AlgebraOfGraphics.density() |>draw
