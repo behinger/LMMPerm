@@ -87,7 +87,7 @@ end
 # add the last one as optional - hope that works :-D
 run_permutationtest(args...) = run_permutationtest(args...,DummyCoding())
 
-function run_permutationtest(rng, simMod, nPerm, β, σ, sigmas,residual_method,blup_method,analysisCoding,f)
+function run_permutationtest(rng, simMod, nPerm, β, σ, sigmas,residual_permutation,blup_method,analysisCoding,f)
 
     simMod = MixedModelsSim.update!(simMod,sigmas...)
 
@@ -98,7 +98,7 @@ function run_permutationtest(rng, simMod, nPerm, β, σ, sigmas,residual_method,
     H0 = coef(simMod2)
     H0[2] = 0.0
 
-    perm = permutation(rng, nPerm, simMod2, use_threads = false; β = H0,residual_method=residual_method,blup_method=blup_method)
+    perm = permutation(rng, nPerm, simMod2, use_threads = false; β = H0,residual_permutation=residual_permutation,blup_method=blup_method)
     p_β = values(permutationtest_be(perm, simMod2; statistic = :β))
     p_z = values(permutationtest_be(perm, simMod2; statistic = :z))
 

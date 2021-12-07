@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.1
+# v0.16.0
 
 using Markdown
 using InteractiveUtils
@@ -33,6 +33,9 @@ end
 # ╔═╡ 72f5e910-e40d-11eb-3725-f19a95c9b3c1
 include("../src/sim_utilities.jl");
 
+# ╔═╡ eef54200-4ccc-4d08-83b0-b277489f2bff
+
+
 # ╔═╡ 0cbf776c-8e56-4d32-8a55-da22f8bf1940
 f =  @formula(dv ~ 1 + condition  + (1+condition|subj));
 
@@ -46,7 +49,7 @@ residual_method = :signflip;
 β = [0., 0.]
 
 # ╔═╡ 55e97ef0-0f23-48a6-8229-7f1b6ca3d044
-md"σ (residual) $(@bind σ Slider(0.1:0.1:2; default=1., show_value=true))"
+md"seed $(@bind seed_val Slider(1:100; default=1., show_value=true))"
 
 # ╔═╡ 2141edd4-c8ed-4d1b-a5ec-9913b19a2d4a
 	md"Subjects: $(@bind nsub Slider(2:2:50; default=30, show_value=true))"
@@ -64,6 +67,19 @@ begin
 			);
 	dat = DataFrame(sim_model_getData(nsub,nitem));
 end;
+
+# ╔═╡ eccf3c09-aa58-4c7c-8e43-364309df6885
+@bind bootPerm Radio([
+		"0"=>"Bootstrap",
+		"1"=>"Permutation",
+		],"1")
+
+# ╔═╡ e132bb53-9b6c-4d61-bb45-d5d9209ff4da
+@bind reml Radio([
+		"0"=>"ML",
+		"1"=>"REML",
+		#"3"=>"experimental"
+		],"1")
 
 # ╔═╡ acc913dd-b17c-4137-83f4-7df179bdc3a1
 @bind res Radio([
@@ -91,20 +107,23 @@ md"σ-intercept: $(@bind σ1 Slider(0:0.1:5; default=0., show_value=true))"
 md"σ-test: $(@bind σ2 Slider(0:0.1:10; default=4., show_value=true))"
 
 # ╔═╡ 21664a88-30fd-4829-a70d-e727a5f5b66b
-σs = [σ1,σ2,0.]
+σs = [σ1,σ2,0.2]
 
 # ╔═╡ cfd225bb-1eec-41b1-b6c1-ebc036b7e1d2
 begin
 # generate simulated "y" vector
-simMod = fit(MixedModel, f, dat,contrasts=contrasts)
+simMod = fit(MixedModel, f, dat,contrasts=contrasts,REML=reml=="1")
 simMod = MixedModelsSim.update!(simMod,[create_re(x...) for x in σs]...)
-simMod = simulate!(MersenneTwister(1),simMod, β = β, σ = σ)
+simMod = simulate!(MersenneTwister(Int(seed_val)),simMod, β = β, σ = 1.)
 
 # fit a LMM mod to the y (separate models to maybe have separate formulas later
 datSim = dat
 datSim.dv = simMod.y
-simMod2 = MixedModels.fit(MixedModel,f ,datSim,contrasts=contrasts)
+simMod2 = MixedModels.fit(MixedModel,f ,datSim,contrasts=contrasts,REML=reml=="1")
 end;
+
+# ╔═╡ d8335805-d7e3-45db-989b-0ed6f9a08525
+test = MixedModelsPermutations.nonparametricbootstrap(20,simMod2)
 
 # ╔═╡ 58fa0d39-65e0-4ec7-aeb0-e8bde381379a
 begin
@@ -121,6 +140,16 @@ H0[2] = 0.0
 #	perm = permutation(Random.MersenneTwister(2),20, simMod2; β = H0,residual_method=residual_method,blup_method=blup_method,infla)
 perm = []
 for p = 1:20
+		if bootPerm == "0"
+			# boot strap
+			
+			model = MixedModelsPermutations.resample!(MersenneTwister(p+1),deepcopy(morig);
+                  blups=ranef(simMod2),
+                  resids=residual_function(simMod2),
+                  scalings= MixedModelsPermutations.inflation_factor(morig, ranef(simMod2), residual_function(simMod2))
+	)
+		else
+			#permutation
 	model = MixedModelsPermutations.permute!(MersenneTwister(p+1),deepcopy(morig);
                   β = H0,
                   blups=olsranef(simMod2),
@@ -128,6 +157,7 @@ for p = 1:20
 			      residual_method = residual_method,
                   scalings=I(length(β)),
 	)
+		end
 	refit!(model)
 	res=	(
 	 objective = model.objective,
@@ -143,9 +173,9 @@ end
 # ╔═╡ 64d2509b-d94e-4e48-8f81-fa13d5f9e9be
 let	
 	Plots.plot(DataFrame(perm).σ,label="permutation")
-	hline!([σ],label="theoretical σ")
+	hline!([1.],label="theoretical σ")
 	hline!([simMod2.σ],label="empirical σ")
-	ylims!((σ*0.8,σ*1.2))
+	ylims!((1. *0.8,1. *1.2))
 	ylabel!("residual σ")
 	xlabel!("permutation")
 end
@@ -1325,6 +1355,8 @@ version = "0.9.1+5"
 # ╠═72f5e910-e40d-11eb-3725-f19a95c9b3c1
 # ╠═0eaf2824-dd65-4dfb-905e-96d8a1754e08
 # ╠═cfd225bb-1eec-41b1-b6c1-ebc036b7e1d2
+# ╠═d8335805-d7e3-45db-989b-0ed6f9a08525
+# ╠═eef54200-4ccc-4d08-83b0-b277489f2bff
 # ╠═58fa0d39-65e0-4ec7-aeb0-e8bde381379a
 # ╠═968e3f53-055c-4dc0-b4e3-1217e511b3b4
 # ╠═0cbf776c-8e56-4d32-8a55-da22f8bf1940
@@ -1335,6 +1367,8 @@ version = "0.9.1+5"
 # ╟─55e97ef0-0f23-48a6-8229-7f1b6ca3d044
 # ╟─2141edd4-c8ed-4d1b-a5ec-9913b19a2d4a
 # ╟─bac32d2f-fb1f-4f02-b2f5-49df029b7b92
+# ╟─eccf3c09-aa58-4c7c-8e43-364309df6885
+# ╟─e132bb53-9b6c-4d61-bb45-d5d9209ff4da
 # ╟─acc913dd-b17c-4137-83f4-7df179bdc3a1
 # ╠═64d2509b-d94e-4e48-8f81-fa13d5f9e9be
 # ╟─2776e7cf-ee8f-421e-98ed-fa03ecdbee68

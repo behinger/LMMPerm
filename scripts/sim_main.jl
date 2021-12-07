@@ -59,12 +59,12 @@ paramList = Dict(
     "residualMethod" => [:signflip],
     "nRep" => [5000],
     "nPerm"=> [1000],
-    "analysisCoding"=> [DummyCoding,EffectsCoding],
-    "simulationCoding" => [DummyCoding,EffectsCoding],
+    "analysisCoding"=> [DummyCoding],
+    "simulationCoding" => [DummyCoding],
 )
 
 paramList = Dict(
-    "f" => f2,
+    "f" => f3,
     "σs" => [[[1.], [4.]]],          
     "σ" => 1.,
     "β" => [[0., 0.]],
@@ -74,6 +74,7 @@ paramList = Dict(
     "nPerm"=> [1000],
     "analysisCoding"=> DummyCoding,
     "simulationCoding" => DummyCoding,
+
 )
 
 
@@ -89,7 +90,7 @@ res = run_permutationtest(MersenneTwister(5),simMod,
 
 ##---
 
-nWorkers=40
+nWorkers=20
 for dl = dict_list(paramList)
     println(dl)
     dl_save =deepcopy(dl)
