@@ -65,8 +65,8 @@ function run_permutationtest_distributed(n_workers, nRep, simMod,args...)
     β_permResult = SharedArray{Float64}(nRep, length(coef(simMod)))
     z_permResult = SharedArray{Float64}(nRep, length(coef(simMod)))
     @everywhere @quickactivate "LMMPerm"
-    @everywhere srcdir("sim_utilities.jl")
-    @everywhere srcdir("permutationtest_be.jl")
+    @everywhere include(srcdir("sim_utilities.jl"))
+    @everywhere include(srcdir("permutationtest_be.jl"))
     
     println("starting @distributed")
     println("Note: If nothing is starting, this is likely due to an error which will just freeze everything. Test it locally!")
