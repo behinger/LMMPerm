@@ -63,19 +63,19 @@ paramList = Dict(
     "simulationCoding" => [DummyCoding],
 )
 
-paramList = Dict(
-    "f" => f3,
-    "σs" => [[[1.], [4.]]],          
-    "σ" => 1.,
-    "β" => [[0., 0.]],
-    "blupMethod" => ["olsranef"],
-    "residualMethod" => [:signflip],
-    "nRep" => [5000],
-    "nPerm"=> [1000],
-    "analysisCoding"=> DummyCoding,
-    "simulationCoding" => DummyCoding,
+# paramList = Dict(
+#     "f" => f3,
+#     "σs" => [[[1.], [4.]]],          
+#     "σ" => 1.,
+#     "β" => [[0., 0.]],
+#     "blupMethod" => ["olsranef"],
+#     "residualMethod" => [:signflip],
+#     "nRep" => [5000],
+#     "nPerm"=> [1000],
+#     "analysisCoding"=> DummyCoding,
+#     "simulationCoding" => DummyCoding,
 
-)
+# )
 
 
 
