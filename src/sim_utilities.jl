@@ -5,7 +5,8 @@ using SharedArrays
 using BlockDiagonals,LinearAlgebra
 using DataFrames
 
- sim_model_getData() =  sim_model_getData(30,30)
+
+sim_model_getData() =  sim_model_getData(30,30)
 function sim_model_getData(nsub,nitem)
     subj_btwn = Dict("age" => ["O", "Y"])
 
@@ -56,17 +57,16 @@ function run_permutationtest_distributed(n_workers, nRep, simMod,args...)
         macroexpand(
             Distributed,
             quote
-                @everywhere using MixedModelsSim,
+                @everywhere using DrWatson, MixedModelsSim,
                     Random, MixedModels, MixedModelsPermutations
             end,
         ),
     )
     β_permResult = SharedArray{Float64}(nRep, length(coef(simMod)))
     z_permResult = SharedArray{Float64}(nRep, length(coef(simMod)))
-    
-    @everywhere include("src/sim_utilities.jl")
-    #b = srcdir("sim_utilities.jl")
-    @everywhere include("src/permutationtest_be.jl")
+    @everywhere @quickactivate "LMMPerm"
+    @everywhere srcdir("sim_utilities.jl")
+    @everywhere srcdir("permutationtest_be.jl")
     
     println("starting @distributed")
     println("Note: If nothing is starting, this is likely due to an error which will just freeze everything. Test it locally!")
@@ -161,3 +161,4 @@ function expandgrid(df1, df2)
     end
     return reduce(vcat, a)
 end
+println("loaded sim_utilities")

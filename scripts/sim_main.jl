@@ -1,5 +1,5 @@
 using DrWatson
-@quickactivate "permType1"
+@quickactivate "LMMPerm"
 
 using Random,TimerOutputs
 include(srcdir("sim_utilities.jl"))
@@ -31,8 +31,8 @@ paramList = Dict(
     "β" => [[0., 0.]],
     "blupMethod" => ["olsranefjf"],
     "residualMethod" => [:signflip],
-    "nRep" => [1001,2000,5000],
-    "nPerm"=> [1001,2000,5000],
+    "nRep" => [5000],
+    "nPerm"=> [1000,2000,5000],
     "analysisCoding"=> DummyCoding,
     "simulationCoding" => DummyCoding
 )
@@ -89,7 +89,7 @@ res = run_permutationtest(MersenneTwister(5),simMod,
                 dl["residualMethod"], getfield(Main,Meta.parse(dl["blupMethod"])),dl["analysisCoding"],dl["f"])
 
 ##---
-
+@time begin
 nWorkers=20
 for dl = dict_list(paramList)
     println(dl)
@@ -115,6 +115,8 @@ for dl = dict_list(paramList)
     dl_save["results"] = df
     dl_save["runtime"] = t
     @tagsave(fnName, dl_save)
+end
+
 end
 
 ##---- Load & Analze
