@@ -95,6 +95,8 @@ function run_permutationtest(rng, simMod, nPerm, β, σ, sigmas,residual_permuta
     dat = sim_model_getData() |> x-> DataFrame(x)
     dat.dv = simMod.y
     simMod2 = MixedModels.fit(MixedModel,f ,dat,contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
+    simMod2.optsum.maxtime = 0.01 # restrict per-iteration fitting time
+    
     H0 = coef(simMod2)
     H0[2] = 0.0
 

@@ -5,90 +5,44 @@ using Random,TimerOutputs
 include(srcdir("sim_utilities.jl"))
 include(srcdir("permutationtest_be.jl"))
 
-f1 =  @formula(dv ~ 1 + condition  + (1+condition|subj))
-f2 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
-f3 =  @formula(dv ~ 1 + condition  + zerocorr(1+condition|subj))
+f1 =  @formula(dv ~ 1 + condition  + (1|subj))
+f2 =  @formula(dv ~ 1 + condition  + zerocorr(1+condition|subj))
+f3 =  @formula(dv ~ 1 + condition  + (1+condition|subj))
+f4 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
 paramList = Dict(
-    "f" => [f1,f2],
-    "σs" => [@onlyif("f"== f1, [[1., 1.]]),
-            @onlyif("f"== f2, [[1., 1.], [1., 1.]]),
-            #@onlyif("f"== f2, [[1., 1.], [1., 0.]]),
-            @onlyif("f"== f2, [[1., 1.], [1., 4.]])],
+    "f" => [f1,f3],
+    "σs" => [@onlyif("f"!= f4, [[1., 0.], [0.,0.]]),
+             @onlyif("f"!= f4, [[1., 1.], [0.,0.]]),  
+             @onlyif("f"!= f4, [[1., 4.], [0.,0.]]),
+
+             @onlyif("f"== f4, [[1., 1.], [1., 0.]]),
+             @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
+             @onlyif("f"== f4, [[1., 1.], [1., 4.]])],
     "σ" => 1.,
     "β" => [[0., 0.]],
-    "blupMethod" => ["ranef","olsranefjf", "olsranef"],
-    "residualMethod" => [:signflip,:shuffle],
-    "nRep" => 1000,
+    "blupMethod" => ["ranef","olsranef"],
+    "residualMethod" => [:signflip],#[:signflip,:shuffle],
+    "nRep" => 5000,
     "nPerm"=> 1000,
     "analysisCoding"=> DummyCoding,
     "simulationCoding" => DummyCoding
 )
 
-paramList = Dict(
-    "f" => f1,
-    "σs" => [[[1., 1.]],[[1., 4.]],[[4., 1.]]],
-    "σ" => 1.,
-    "β" => [[0., 0.]],
-    "blupMethod" => ["olsranefjf"],
-    "residualMethod" => [:signflip],
-    "nRep" => [5000],
-    "nPerm"=> [1000,2000,5000],
-    "analysisCoding"=> DummyCoding,
-    "simulationCoding" => DummyCoding
-)
-
-paramList = Dict(
-    "f" => f3,
-    "σs" => [[[1.], [1.]],[[1.], [2.]],[[1.], [3.]],[[1.], [4.]]],
-    "σ" => 1.,
-    "β" => [[0., 0.]],
-    "blupMethod" => ["olsranef"],
-    "residualMethod" => [:signflip],
-    "nRep" => [10000],
-    "nPerm"=> [2000],
-    "analysisCoding"=> DummyCoding,
-    "simulationCoding" => DummyCoding
-)
-
-paramList = Dict(
-    "f" => f1,
-    "σs" => [[[1., 4.]]],
-    "σ" => 1.,
-    "β" => [[0., 0.]],
-    "blupMethod" => ["olsranef"],
-    "residualMethod" => [:signflip],
-    "nRep" => [5000],
-    "nPerm"=> [1000],
-    "analysisCoding"=> [DummyCoding],
-    "simulationCoding" => [DummyCoding],
-)
-
-# paramList = Dict(
-#     "f" => f3,
-#     "σs" => [[[1.], [4.]]],          
-#     "σ" => 1.,
-#     "β" => [[0., 0.]],
-#     "blupMethod" => ["olsranef"],
-#     "residualMethod" => [:signflip],
-#     "nRep" => [5000],
-#     "nPerm"=> [1000],
-#     "analysisCoding"=> DummyCoding,
-#     "simulationCoding" => DummyCoding,
-
-# )
-
 
 
 dict_list(paramList)
 ##---
+include(srcdir("sim_utilities.jl"))
 
 dl = dict_list(paramList)[1]
-simMod = sim_model(dl["f"],simulationCoding = dl["simulationCoding"])
+simMod = sim_model(f4,simulationCoding = dl["simulationCoding"])
 res = run_permutationtest(MersenneTwister(5),simMod,
                 dl["nPerm"],dl["β"],dl["σ"],[create_re(x...) for x in dl["σs"]],
                 dl["residualMethod"], getfield(Main,Meta.parse(dl["blupMethod"])),dl["analysisCoding"],dl["f"])
 
 ##---
+include(srcdir("sim_utilities.jl"))
+
 @time begin
 nWorkers=20
 for dl = dict_list(paramList)
@@ -102,7 +56,7 @@ for dl = dict_list(paramList)
         # don't calculate again
         continue
     end
-    simMod = sim_model(dl["f"],simulationCoding=dl["simulationCoding"],)
+    simMod = sim_model(f4,simulationCoding=dl["simulationCoding"],)
     t = @elapsed begin
     res = run_permutationtest_distributed(nWorkers,dl["nRep"],simMod,
         dl["nPerm"],dl["β"],dl["σ"],
