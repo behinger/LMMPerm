@@ -4,7 +4,7 @@ using ProgressMeter
 using SharedArrays
 using BlockDiagonals,LinearAlgebra
 using DataFrames
-
+using StatsBase
 
 sim_model_getData() =  sim_model_getData(30,30)
 function sim_model_getData(nsub,nitem)
@@ -34,8 +34,7 @@ function sim_model(f;simulationCoding=DummyCoding)
     return simMod
 
 end
-function run_permutationtest_distributed(n_workers, nRep, simMod,args...)
-    
+function run_test_distributed(n_workers,simMod;nRep = missing,kwargs...)
     if nworkers() < n_workers
         # open as many as necessary
         println("Starting Workers, this might take some time")
@@ -62,8 +61,8 @@ function run_permutationtest_distributed(n_workers, nRep, simMod,args...)
             end,
         ),
     )
-    β_permResult = SharedArray{Float64}(nRep, length(coef(simMod)))
-    z_permResult = SharedArray{Float64}(nRep, length(coef(simMod)))
+    statResult1 = SharedArray{Float64}(nRep, length(coef(simMod)))
+    statResult2 = SharedArray{Float64}(nRep, length(coef(simMod)))
     @everywhere @quickactivate "LMMPerm"
     @everywhere include(srcdir("sim_utilities.jl"))
     @everywhere include(srcdir("permutationtest_be.jl"))
@@ -73,38 +72,130 @@ function run_permutationtest_distributed(n_workers, nRep, simMod,args...)
     # parallel loop
     @showprogress @distributed for k = 1:nRep
         #println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
-        #res = [1,1.]#
-        res = run_permutationtest(MersenneTwister(5000+k), deepcopy(simMod),args...)
-        #println("Thread "*string(Threads.threadid()) * "\t Stop "*string(k))
-        β_permResult[k, :] .= res[1]
-        z_permResult[k, :] .= res[2]
+        res = run_test(MersenneTwister(5000+k), deepcopy(simMod);kwargs...)
 
+
+
+        
+
+        if typeof(res) <: NamedTuple
+            val = (res[Symbol("(Intercept)")],res[Symbol("condition: B")])
+            statResult1[k, :] .= val    
+            statResult2[k, :] .= -1
+        else
+            statResult1[k, :]  = (res[1][Symbol("(Intercept)")],res[1][Symbol("condition: B")])
+            statResult2[k, :]  = (res[2][Symbol("(Intercept)")],res[2][Symbol("condition: B")])
+        
+        end
     end
-    return β_permResult, z_permResult
+    return statResult1, statResult2
 
 end
 
 # add the last one as optional - hope that works :-D
-run_permutationtest(args...) = run_permutationtest(args...,DummyCoding())
-
-function run_permutationtest(rng, simMod, nPerm, β, σ, sigmas,residual_permutation,blup_method,analysisCoding,f)
-
-    simMod = MixedModelsSim.update!(simMod,sigmas...)
+#run_permutationtest(args...) = run_permutationtest(args...,DummyCoding()) # this looks dangerous, but I should rewrite everything anyway...
+function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  analysisCoding = DummyCoding,kwargs...)
+    @assert all(.!ismissing.([f,β,σs]))
+    simMod = MixedModelsSim.update!(simMod,[create_re(x...) for x in σs]...)
 
     simMod = simulate!(rng, simMod, β = β, σ = σ)
     dat = sim_model_getData() |> x-> DataFrame(x)
     dat.dv = simMod.y
-    simMod2 = MixedModels.fit(MixedModel,f ,dat,contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
-    simMod2.optsum.maxtime = 0.01 # restrict per-iteration fitting time
-    
-    H0 = coef(simMod2)
-    H0[2] = 0.0
+    simMod_inst = MixedModels.fit(MixedModel,f ,dat,contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
+    simMod_inst.optsum.maxtime = 0.5 # restrict per-iteration fitting time
+    return simMod_inst
+end
 
-    perm = permutation(rng, nPerm, simMod2, use_threads = false; β = H0,residual_permutation=residual_permutation,blup_method=blup_method)
-    p_β = values(permutationtest_be(perm, simMod2; statistic = :β))
-    p_z = values(permutationtest_be(perm, simMod2; statistic = :z))
+function run_test(rng,simMod;statsMethod="permutation", kwargs...)
+
+    simMod_instantiated = setup_simMod(rng,simMod;kwargs...)
+    
+    if statsMethod == "permutation"
+        run_fun = run_permutationtest
+    elseif statsMethod == "LRT"
+        run_fun = run_LRT
+    elseif statsMethod == "waldsT"
+           run_fun=  run_waldsT
+    elseif statsMethod == "pBoot"
+            run_fun = run_pBoot
+    else
+            error("not implemented")
+    end
+    
+    res = run_fun(rng,simMod_instantiated;kwargs...)     
+    
+    return res
+    
+end
+function run_pBoot(rng,simMod_instantiated;nBoot = 1000,kwargs...)
+    bootRes = parametricbootstrap(rng,nBoot,simMod_instantiated) # bootstrap
+    covRes = DataFrame(shortestcovint(bootRes)) # get 95 convint 
+    ci95 = covRes[(covRes.type.== "β"),[:names,:lower,:upper] ] # get the right parameter
+    significant =  sign.(ci95.lower) .== sign.(ci95.upper) # check if sign equal, if yes, we have significance
+
+    return (;(Symbol.(ci95.names) .=> significant)...)
+end
+
+function run_waldsT(rng,simMod_instantiated;kwargs...)
+    x = coeftable(simMod_instantiated)
+    pvals =  x.cols[x.pvalcol]
+    return (;(Symbol.(x.rownms) .=> pvals)...) # we can report two p-vals, might be changed
+end
+
+function run_LRT(rng,simMod_instantiated;kwargs...)
+    error("not implemented")
+    simMod_instantiated
+
+end
+
+function run_permutationtest(rng,simMod_instantiated;nPerm=1000,residual_permutation=:shuffle,blup_method= "ranef",  kwargs...)
+    blup_method = getfield(Main,Meta.parse(blup_method))
+
+    H0 = coef(simMod_instantiated)
+    H0[2] = 0.0
+    
+    if first(methods(blup_method)).nargs == 1 # super hacky, but we need this for ranef_covInflation
+        perm = permutation(rng, nPerm, simMod_instantiated, use_threads = false;
+         β = H0,residual_permutation=residual_permutation,blup_method=ranef,inflation_method=inflation_method_cov)
+        
+    else
+        perm = permutation(rng, nPerm, simMod_instantiated, use_threads = false; β = H0,residual_permutation=residual_permutation,blup_method=blup_method)
+    end
+    p_β = permutationtest_be(perm, simMod_instantiated; statistic = :β)
+    p_z = permutationtest_be(perm, simMod_instantiated; statistic = :z)
 
     return (p_β, p_z)
+
+   end
+
+#--------------- Functions --------------------
+
+function inflation_method_cov(m::LinearMixedModel, blups=ranef(m), resids=residuals(m))    
+        σ = sdest(m)
+        σres = std(resids; corrected=false)
+          inflation = map(zip(m.reterms, blups)) do (trm, re)
+            # inflation
+            λmle =  trm.λ * σ                              # L_R in CGR
+    
+            cov_emp = StatsBase.cov(re'; corrected=false)
+                    
+            chol = cholesky(cov_emp, Val(true); check=false,tol=10^-5)
+    
+            #  ATTEMPT 2
+             while chol.rank != size(cov_emp, 1)
+                 #@info "rep"
+                idx = chol.p[(chol.rank+1):end]
+                cov_emp[idx, idx] .+= 1e-6
+                chol = cholesky(cov_emp, Val(true); check=false,tol=10^-5)
+            end
+            
+            L = chol.L[invperm(chol.p),:]
+            cov_emp = L * L'
+            cov_mle = λmle * λmle'
+            
+            return cov_mle / cov_emp
+        end
+        return [inflation; σ / σres]
 end
 
 

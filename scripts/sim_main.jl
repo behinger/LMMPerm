@@ -5,73 +5,120 @@ using Random,TimerOutputs
 include(srcdir("sim_utilities.jl"))
 include(srcdir("permutationtest_be.jl"))
 
+convertDict = x-> [Symbol(d.first) => d.second for d in x]
 f1 =  @formula(dv ~ 1 + condition  + (1|subj))
 f2 =  @formula(dv ~ 1 + condition  + zerocorr(1+condition|subj))
 f3 =  @formula(dv ~ 1 + condition  + (1+condition|subj))
 f4 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
+
+ranef_covInflation = ()->"ranef_covInflation"
+#---h0 tests
 paramList = Dict(
-    "f" => [f1,f3],
+    "f" => [f1,f3,f4],
     "σs" => [@onlyif("f"!= f4, [[1., 0.], [0.,0.]]),
              @onlyif("f"!= f4, [[1., 1.], [0.,0.]]),  
              @onlyif("f"!= f4, [[1., 4.], [0.,0.]]),
+             @onlyif("f"!= f4, [[4., 1.], [0.,0.]]),
 
              @onlyif("f"== f4, [[1., 1.], [1., 0.]]),
              @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
              @onlyif("f"== f4, [[1., 1.], [1., 4.]])],
     "σ" => 1.,
     "β" => [[0., 0.]],
-    "blupMethod" => ["ranef","olsranef"],
-    "residualMethod" => [:signflip],#[:signflip,:shuffle],
+    "blupMethod" => ["ranef","ranef_covInflation",@onlyif("f"!=f4,"olsranef")],
+    "residualMethod" => [:signflip,:shuffle],#[:signflip,:shuffle],"
     "nRep" => 5000,
     "nPerm"=> 1000,
-    "analysisCoding"=> DummyCoding,
-    "simulationCoding" => DummyCoding
+
 )
 
+#----
+# H1 test
+paramList = Dict(
+    "f" => [f1,f3,f4],
+    "σs" => [@onlyif("f"== f1, [[1., 0.], [0.,0.]]),
+             @onlyif("f"== f3, [[1., 1.], [0.,0.]]),  
+             @onlyif("f"== f3, [[1., 4.], [0.,0.]]),
+             @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
+             ],
+    "σ" => 1.,
+    "β" => [[0., 0.],[0., 0.1],[0., 1.],[0., 10.]],
+    "blupMethod" => ["ranef","ranef_covInflation",@onlyif("f"!=f4,"olsranef")],
+    "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
+    "nRep" => 5000,
+    "nPerm"=> 1000,
 
+)
 
-dict_list(paramList)
+##--- power permutation
+paramList = Dict(
+    "f" => [f3],
+    "σs" => [[[1., 1.], [0.,0.]]],
+    "σ" => 1.,
+    "β" => [[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]],
+    "blupMethod" => ["ranef_covInflation",@onlyif("f"!=f4,"olsranef")],
+    "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
+    "nRep" => 5000,
+    "nPerm"=> 1000,
+
+)
+##-- Power other methods
+paramList = Dict(
+    "statsMethod" => ["waldsT","pBoot"], # if this is "missing" we run permutation for backward compatibility
+    "f" => [f3],
+    "σs" => [[[1., 1.], [0.,0.]]],
+    "σ" => 1.,
+    "β" => [[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]],
+    "nRep" => 5000,
+)
 ##---
 include(srcdir("sim_utilities.jl"))
 
-dl = dict_list(paramList)[1]
-simMod = sim_model(f4,simulationCoding = dl["simulationCoding"])
-res = run_permutationtest(MersenneTwister(5),simMod,
-                dl["nPerm"],dl["β"],dl["σ"],[create_re(x...) for x in dl["σs"]],
-                dl["residualMethod"], getfield(Main,Meta.parse(dl["blupMethod"])),dl["analysisCoding"],dl["f"])
+
+dl = 
+simMod = sim_model(f4)
+
+res = run_test(MersenneTwister(5),simMod; convertDict(dict_list(paramList)[3])...)
 
 ##---
 include(srcdir("sim_utilities.jl"))
 
 @time begin
-nWorkers=20
+nWorkers=10
 for dl = dict_list(paramList)
     println(dl)
     dl_save =deepcopy(dl)
     dl_save["f"]  = string(dl_save["f"].rhs)|>x->replace(x," "=>"") # rename formula
+    if "residualMethod" ∈ keys(dl_save)
     dl_save["residualMethod"]  = string(dl_save["residualMethod"])
+    end
 
     fnName = datadir("sim", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
     if isfile(fnName)
         # don't calculate again
         continue
     end
-    simMod = sim_model(f4,simulationCoding=dl["simulationCoding"],)
+
+    simMod = sim_model(f4)
+
     t = @elapsed begin
-    res = run_permutationtest_distributed(nWorkers,dl["nRep"],simMod,
-        dl["nPerm"],dl["β"],dl["σ"],
-        [create_re(x...) for x in dl["σs"]],
-        dl["residualMethod"],
-        getfield(Main,Meta.parse(dl["blupMethod"])),
-        dl["analysisCoding"],dl["f"] )
+        res = run_test_distributed(nWorkers,simMod;convertDict(dl)...)
     end
-    df = DataFrame(:z=>res[1][:],:β=>res[2][:],:h1=>[repeat(["1"],size(res[1],1)); repeat(["0"],size(res[1],1))])
+    df = DataFrame(:z=>res[1][:],:β=>res[2][:],:h1=>[repeat(["0"],size(res[1],1)); repeat(["1"],size(res[1],1))])
+    @warn " \beta is actual res[1]!!"
     dl_save["results"] = df
     dl_save["runtime"] = t
     @tagsave(fnName, dl_save)
 end
 
 end
+
+
+
+
+
+##--- see nb_results.jl!!
+
 
 ##---- Load & Analze
 c = collect_results(datadir("sim"))
