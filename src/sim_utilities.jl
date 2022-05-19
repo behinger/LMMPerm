@@ -83,12 +83,25 @@ function run_test_distributed(n_workers,simMod;nRep = missing,kwargs...)
             statResult1[k, :] .= val    
             statResult2[k, :] .= -1
         else
-            statResult1[k, :]  = (res[1][Symbol("(Intercept)")],res[1][Symbol("condition: B")])
-            statResult2[k, :]  = (res[2][Symbol("(Intercept)")],res[2][Symbol("condition: B")])
+            statResult1[k, :]  .= (res[1][Symbol("(Intercept)")],res[1][Symbol("condition: B")])
+            statResult2[k, :]  .= (res[2][Symbol("(Intercept)")],res[2][Symbol("condition: B")])
         
         end
     end
-    return statResult1, statResult2
+
+    #unpack
+    df = vcat(
+        DataFrame(Dict(:pval => statResult1[:,1],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default",:seed =>5000 .+ (1:nRep))),
+        DataFrame(Dict(:pval => statResult1[:,2],:coefname=>repeat(["condition: B"],nRep),:test=>"default",:seed =>5000 .+ (1:nRep))),
+        DataFrame(Dict(:pval => statResult2[:,1],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default2",:seed =>5000 .+ (1:nRep))),
+        DataFrame(Dict(:pval => statResult2[:,2],:coefname=>repeat(["condition: B"],nRep),:test=>"default2",:seed =>5000 .+ (1:nRep))))
+    
+    if statResult2[1,1] !=-1.
+        # permutation
+        df.test[df.test .== "default"] .= "β"
+        df.test[df.test .== "default2"] .= "z"
+    end
+    return df[df.pval .!= -1,:]
 
 end
 

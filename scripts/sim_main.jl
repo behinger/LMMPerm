@@ -87,13 +87,16 @@ include(srcdir("sim_utilities.jl"))
 nWorkers=10
 for dl = dict_list(paramList)
     println(dl)
+    
     dl_save =deepcopy(dl)
     dl_save["f"]  = string(dl_save["f"].rhs)|>x->replace(x," "=>"") # rename formula
+
+
     if "residualMethod" ∈ keys(dl_save)
-    dl_save["residualMethod"]  = string(dl_save["residualMethod"])
+        dl_save["residualMethod"]  = string(dl_save["residualMethod"])
     end
 
-    fnName = datadir("sim", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
+    fnName = datadir("22-05_sim", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
     if isfile(fnName)
         # don't calculate again
         continue
@@ -104,9 +107,8 @@ for dl = dict_list(paramList)
     t = @elapsed begin
         res = run_test_distributed(nWorkers,simMod;convertDict(dl)...)
     end
-    df = DataFrame(:z=>res[1][:],:β=>res[2][:],:h1=>[repeat(["0"],size(res[1],1)); repeat(["1"],size(res[1],1))])
-    @warn " \beta is actual res[1]!!"
-    dl_save["results"] = df
+    #@warn " \beta is actual res[1]!!"
+    dl_save["results"] = res
     dl_save["runtime"] = t
     @tagsave(fnName, dl_save)
 end

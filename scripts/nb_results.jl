@@ -27,6 +27,9 @@ begin
 end
 
 
+# ╔═╡ dd964262-9124-49ba-ad5c-42cc0cc5a057
+
+
 # ╔═╡ a0354656-03c1-4af2-8360-5e24279394f6
 
 begin
@@ -49,8 +52,9 @@ c[!,"β<0.05"] = [sum(r.results[r.results.h1.=="1",:].β .<=0.05)/r.nRep for r i
 		:σs == [[1., 1],[1., 4]] ? "1+1*a|s+1+4*a|i" : 
 		:σs == [[1., 1],[1., 1]] ? "1+1*a|s+1+1*a|i" : 
 		:σs == [[1., 4],[0., 0]] ? "1+4*a|s" : "A")
-	
-	c.p = c[!,"z<0.05"]
+
+	c = stack(c,["z<0.05","β<0.05"],variable_name="z or β",value_name=:p)
+	#c.p = c[!,"z<0.05"]
 	
 	
 md"""
@@ -59,10 +63,10 @@ md"""
 end
 
 # ╔═╡ d11c693c-c851-4bba-8b40-974b41e1b5dd
-c[:,["f","blupMethod","residualMethod","σs","β<0.05","z<0.05","β"]]
+c[:,["f","blupMethod","residualMethod","σs","p","z or β"]]
 
 # ╔═╡ f94c53f5-9f2d-46ed-aa6b-b0bb4ae5d6f0
-@rsubset(c,!ismissing(:statsMethod))[:,["β","z<0.05","statsMethod"]]
+@rsubset(c,!ismissing(:statsMethod))[:,["β","statsMethod","p","z or β"]]
 
 # ╔═╡ 401c84ff-172c-43a0-a6a4-2089f8ac3bb0
 md"## Plot Types / Methods"
@@ -83,7 +87,8 @@ let
 		color=:blupMethod,
 		dodge=:residualMethod,
 		marker=:residualMethod,
-		col=:σs_simple=>sorter(["1|s","1+1*a|s","4+1*a|s","1+4*a|s","1+1*a|s+1|i","1+1*a|s+1+1*a|i","1+1*a|s+1+4*a|i"])
+		col=:σs_simple=>sorter(["1|s","1+1*a|s","4+1*a|s","1+4*a|s","1+1*a|s+1|i","1+1*a|s+1+1*a|i","1+1*a|s+1+4*a|i"]),
+		row = Symbol("z or β")
 	)*visual(Scatter)|>x->draw(x,legend=(position=:top,),axis=(xticklabelrotation=45.,))
 	[hlines!.(a.axis,[0.05],color=:red) for a in d.grid]
 	#d.grid[1,1].axis.title = "$(res.formula[1]) \n method:$(res.clusterFormingThreshold[1]) \n type-1: $(mean(res.pval .<=0.05).*100)% 
@@ -102,8 +107,10 @@ let
 	d= data(c|>c->@rsubset(c,:f_simple == "1+a|s",:σs_simple == "1+1*a|s")) * mapping(
 		:β,
 		:p,
-		color=:blupMethod,
-		marker=:statsMethod)*visual(Scatter)|>x->draw(x,legend=(position=:top,),axis=(xticklabelrotation=45.,))
+		marker=:blupMethod,
+		color = Symbol("z or β"),
+		col=:statsMethod,
+	)*visual(Scatter)|>x->draw(x,legend=(position=:left,),axis=(xticklabelrotation=45.,))
 	[hlines!.(a.axis,[0.05],color=:red) for a in d.grid]
 	#d.grid[1,1].axis.title = "$(res.formula[1]) \n method:$(res.clusterFormingThreshold[1]) \n type-1: $(mean(res.pval .<=0.05).*100)% 
 	#θs=$(res.σs[1])"
@@ -1418,10 +1425,11 @@ version = "3.5.0+0"
 # ╔═╡ Cell order:
 # ╠═d11c693c-c851-4bba-8b40-974b41e1b5dd
 # ╠═f94c53f5-9f2d-46ed-aa6b-b0bb4ae5d6f0
+# ╠═dd964262-9124-49ba-ad5c-42cc0cc5a057
 # ╠═a0354656-03c1-4af2-8360-5e24279394f6
 # ╟─401c84ff-172c-43a0-a6a4-2089f8ac3bb0
-# ╠═c4f32c19-4fef-4647-ba3d-8a905d4cc139
 # ╟─9ddd0c40-e22a-4941-94f9-1b841dba73a1
+# ╠═c4f32c19-4fef-4647-ba3d-8a905d4cc139
 # ╠═a6414428-1579-47b3-91ff-da0eeac40ccb
 # ╠═03375296-0974-449c-8a1f-2019e5e4a0fb
 # ╠═001affd9-8e38-4a3d-8f54-be2e0558351a
