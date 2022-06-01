@@ -5,6 +5,7 @@ using SharedArrays
 using BlockDiagonals,LinearAlgebra
 using DataFrames
 using StatsBase
+using Distributions
 
 sim_model_getData() =  sim_model_getData(30,30)
 function sim_model_getData(nsub,nitem)
@@ -107,20 +108,41 @@ end
 
 # add the last one as optional - hope that works :-D
 #run_permutationtest(args...) = run_permutationtest(args...,DummyCoding()) # this looks dangerous, but I should rewrite everything anyway...
-function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  analysisCoding = DummyCoding,kwargs...)
+function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  analysisCoding = DummyCoding,errorDistribution="normal",kwargs...)
     @assert all(.!ismissing.([f,β,σs]))
+
+    if errorDistribution == "tdist"
+        σ_org = σ    
+        σ = 0.0001
+        σs = σs ./ σ
+    end
     simMod = MixedModelsSim.update!(simMod,[create_re(x...) for x in σs]...)
+
 
     simMod = simulate!(rng, simMod, β = β, σ = σ)
     dat = sim_model_getData() |> x-> DataFrame(x)
-    dat.dv = simMod.y
+    # add noise
+    y = simMod.y;
+   
+    if errorDistribution == "tdist"
+        
+        y = y .+ rand(rng,TDist(3),length(y))
+
+    elseif errorDistribution == "normal"
+        
+        #"nothing needs to happen"
+    else 
+        @error "not implemented error function"
+    end
+    
+    dat.dv = y
     simMod_inst = MixedModels.fit(MixedModel,f ,dat,contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
     simMod_inst.optsum.maxtime = 0.5 # restrict per-iteration fitting time
     return simMod_inst
 end
 
 function run_test(rng,simMod;statsMethod="permutation", kwargs...)
-
+    
     simMod_instantiated = setup_simMod(rng,simMod;kwargs...)
     
     if statsMethod == "permutation"
@@ -161,19 +183,38 @@ function run_LRT(rng,simMod_instantiated;kwargs...)
 
 end
 
-function run_permutationtest(rng,simMod_instantiated;nPerm=1000,residual_permutation=:shuffle,blup_method= "ranef",  kwargs...)
-    blup_method = getfield(Main,Meta.parse(blup_method))
+function run_permutationtest(rng,simMod_instantiated;nPerm=missing,residualMethod=missing,blupMethod=missing,  inflationMethod=missing,residuals=residuals,kwargs...)
+
+    
+    if typeof(blupMethod) <: String
+        blupMethod = getfield(Main,Meta.parse(blupMethod))
+    end
+
+
+    if typeof(inflationMethod) <:String
+        if inflationMethod == "fixRankDeficient=False"
+            inflationMethod = (x,y,z) -> MixedModelsPermutations.inflation_factor(x,y,z;fixRankDeficient=false)
+        elseif inflationMethod == "noScaling"
+            
+            inflationMethod = (m,blups,resids)->[I ; sdest(m) ./std(resids; corrected=false)]#(length(coef()))
+        
+        else
+            inflationMethod = getfield(Main,Meta.parse(inflationMethod))
+        end
+    end
+      
 
     H0 = coef(simMod_instantiated)
     H0[2] = 0.0
     
-    if first(methods(blup_method)).nargs == 1 # super hacky, but we need this for ranef_covInflation
-        perm = permutation(rng, nPerm, simMod_instantiated, use_threads = false;
-         β = H0,residual_permutation=residual_permutation,blup_method=ranef,inflation_method=inflation_method_cov)
+    perm = MixedModelsPermutations.permutation(rng, nPerm, simMod_instantiated, use_threads = false;
+         β = H0,
+         residual_permutation=residualMethod,
+         residual_method= residuals,
+         blup_method=blupMethod,
+         inflation_method=inflationMethod)
         
-    else
-        perm = permutation(rng, nPerm, simMod_instantiated, use_threads = false; β = H0,residual_permutation=residual_permutation,blup_method=blup_method)
-    end
+
     p_β = permutationtest_be(perm, simMod_instantiated; statistic = :β)
     p_z = permutationtest_be(perm, simMod_instantiated; statistic = :z)
 

@@ -11,7 +11,6 @@ f2 =  @formula(dv ~ 1 + condition  + zerocorr(1+condition|subj))
 f3 =  @formula(dv ~ 1 + condition  + (1+condition|subj))
 f4 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
 
-ranef_covInflation = ()->"ranef_covInflation"
 #---h0 tests
 paramList = Dict(
     "f" => [f1,f3,f4],
@@ -25,7 +24,8 @@ paramList = Dict(
              @onlyif("f"== f4, [[1., 1.], [1., 4.]])],
     "σ" => 1.,
     "β" => [[0., 0.]],
-    "blupMethod" => ["ranef","ranef_covInflation",@onlyif("f"!=f4,"olsranef")],
+    "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
+    "inflationMethod" => [MixedModelsPermutations.inflation_factor,"noScaling"],
     "residualMethod" => [:signflip,:shuffle],#[:signflip,:shuffle],"
     "nRep" => 5000,
     "nPerm"=> 1000,
@@ -42,43 +42,39 @@ paramList = Dict(
              @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
              ],
     "σ" => 1.,
-    "β" => [[0., 0.],[0., 0.1],[0., 1.],[0., 10.]],
-    "blupMethod" => ["ranef","ranef_covInflation",@onlyif("f"!=f4,"olsranef")],
+    "β" => [[0., 0.],[0., 0.1],[0., 1.]],
+    "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
+    "inflationMethod" => [MixedModelsPermutations.inflation_factor,"noScaling"],
     "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
     "nRep" => 5000,
     "nPerm"=> 1000,
 
 )
 
-##--- power permutation
+#----
+# Power calculations
 paramList = Dict(
+    "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
+    "errorDistribution" => ["normal","tdist"],
     "f" => [f3],
     "σs" => [[[1., 1.], [0.,0.]]],
     "σ" => 1.,
     "β" => [[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]],
-    "blupMethod" => ["ranef_covInflation",@onlyif("f"!=f4,"olsranef")],
+    "nRep" => 5000,
+    "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
     "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
-    "nRep" => 5000,
+    "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
     "nPerm"=> 1000,
-
-)
-##-- Power other methods
-paramList = Dict(
-    "statsMethod" => ["waldsT","pBoot"], # if this is "missing" we run permutation for backward compatibility
-    "f" => [f3],
-    "σs" => [[[1., 1.], [0.,0.]]],
-    "σ" => 1.,
-    "β" => [[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]],
-    "nRep" => 5000,
 )
 ##---
 include(srcdir("sim_utilities.jl"))
 
 
-dl = 
-simMod = sim_model(f4)
 
-res = run_test(MersenneTwister(5),simMod; convertDict(dict_list(paramList)[3])...)
+simMod = sim_model(f4)
+dl = dict_list(paramList)[7]
+dl["nPerm"] = 10
+res = run_test(MersenneTwister(5),simMod; convertDict(dl)...)
 
 ##---
 include(srcdir("sim_utilities.jl"))
