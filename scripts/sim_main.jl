@@ -1,5 +1,15 @@
+#!/home/st/st_us-051950/st_ac136984/julia-1.7.3/bin/julia
+#SBATCH --cpus-per-task 1
+# :: SBATCH --mem-per-cpu
+#SBATCH --nodes 1 
+#SBATCH -o slurmm/%x-%j.out
+#SBATCH --job-name=LMMPerm
+
+
+
+
 using DrWatson
-@quickactivate "LMMPerm"
+quickactivate(pwd(),"LMMPerm")
 
 using Random,TimerOutputs
 include(srcdir("sim_utilities.jl"))
@@ -75,7 +85,7 @@ simMod = sim_model(f4)
 dl = dict_list(paramList)[7]
 dl["nPerm"] = 10
 res = run_test(MersenneTwister(5),simMod; convertDict(dl)...)
-
+if  1 == 0
 ##---
 include(srcdir("sim_utilities.jl"))
 
@@ -108,69 +118,6 @@ for dl = dict_list(paramList)
     dl_save["runtime"] = t
     @tagsave(fnName, dl_save)
 end
-
+end
 end
 
-
-
-
-
-##--- see nb_results.jl!!
-
-
-##---- Load & Analze
-c = collect_results(datadir("sim"))
-c[!,"z<0.05"] = [sum(r.results[r.results.h1.=="1",:].z .<=0.05)/r.nRep for r in eachrow(c)]
-c[!,"β<0.05"] = [sum(r.results[r.results.h1.=="1",:].β .<=0.05)/r.nRep for r in eachrow(c)]
-
-c[!,["f","blupMethod","residualMethod","σs","β<0.05","z<0.05","analysisCoding","simulationCoding"]]
-
-
-
-
-#d = DataFrame()
-
-#for row in eachrow(c)
-#     for col in filter(!=(:results), propertynames(row))
-#        @show row[col]
-#         row.results[!, col] .= row[col]
-#    end
-#    vcat(d, row.results)
-#end
-
-
-d = vcat(c.results...)
-d[!,"blupMethod"] = vcat(repeat.([[x] for x in c.blupMethod],size.(c.results,1))...)
-d[!,"residualMethod"] = vcat(repeat.([[x] for x in c.residualMethod],size.(c.results,1))...)
-d[!,"σs"] = vcat(repeat.([[x] for x in c.σs],size.(c.results,1))...)
-d[!,"nRep"] = vcat(repeat.([[x] for x in c.nRep],size.(c.results,1))...)
-d[!,"nPerm"] = vcat(repeat.([[x] for x in c.nPerm],size.(c.results,1))...)
-
-
-using DataFrames, AlgebraOfGraphics,Makie
-using GLMakie
-
-data(d[d.h1.=="1",:]) * mapping(:β,color=:σs,dodge=:σs,layout=:σs) * AlgebraOfGraphics.histogram(bins=0:0.01:1) |>draw
-
-data(d[d.h1.=="1",:]|>x->stack(x,[Symbol("z"),Symbol("β")])) * mapping(:value,color=:σs,col=:σs,row=:variable) * AlgebraOfGraphics.histogram(bins=0:0.01:1) |>draw
-
-
-
-data(d) * mapping(:β,color=:h1,layout_x=:blupMethod,layout_y=:residualMethod) * AlgebraOfGraphics.density() |>draw
-
-data(d[d.h1.=="1",:]) * mapping(:z,color=:σs,layout_x=:blupMethod,layout_y=:residualMethod) * AlgebraOfGraphics.density() |>draw()
-
-
-
-d = data(stack(c,[Symbol("z<0.05"),Symbol("β<0.05")])) * mapping(:σs,:value,color=:variable) *visual(Scatter) |>draw
-hlines!(d.grid[1,1].axis,[0.05],color="black")
-##---
-
-p = data(c[(c.blupMethod.=="olsranefjf").&(c.residualMethod.=="signflip"),:]) * 
-mapping(:nPerm,Symbol("<0.05"),
-    color=:nRep,
-    marker=:nRep,
-    layout_y=:blupMethod,
-    layout_x=:σs) *
-visual(Scatter   ,) |>draw()
-#ylims!(p.scene,(0.03, 0.06))
