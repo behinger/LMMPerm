@@ -92,8 +92,8 @@ paramList = Dict(
     "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
     "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
     "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
-    "nSubject" => [10,30],
-    "nItemsPerCondition" => [2,4,10],
+    "nSubject" => [10],
+    "nItemsPerCondition" => [2,10],
     "nPerm"=> 1000,
 )
 
