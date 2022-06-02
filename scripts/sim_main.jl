@@ -1,5 +1,5 @@
 #!/home/st/st_us-051950/st_ac136984/julia-1.7.3/bin/julia
-#SBATCH --cpus-per-task 40
+#SBATCH --cpus-per-task 80
 # :: SBATCH --mem-per-cpu
 #SBATCH --nodes 1 
 #SBATCH -o slurmm/%x-%j.out
@@ -110,7 +110,7 @@ res = run_test(MersenneTwister(5),simMod; convertDict(dl)...)
 include(srcdir("sim_utilities.jl"))
 
 @time begin
-nWorkers=40
+nWorkers=80
 for dl = dict_list(paramList)
     println(dl)
     
