@@ -122,7 +122,7 @@ for dl = dict_list(paramList)
         dl_save["residualMethod"]  = string(dl_save["residualMethod"])
     end
 
-    fnName = datadir("22-05_sim", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
+    fnName = datadir("cluster_sim", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
     if isfile(fnName)
         # don't calculate again
         continue
