@@ -1,9 +1,10 @@
 #!/home/st/st_us-051950/st_ac136984/julia-1.7.3/bin/julia
-#SBATCH --cpus-per-task 1
+#SBATCH --cpus-per-task 40
 # :: SBATCH --mem-per-cpu
 #SBATCH --nodes 1 
 #SBATCH -o slurmm/%x-%j.out
 #SBATCH --job-name=LMMPerm
+#SBATCH --time 10:0:0 
 
 
 
@@ -85,12 +86,11 @@ simMod = sim_model(f4)
 dl = dict_list(paramList)[7]
 dl["nPerm"] = 10
 res = run_test(MersenneTwister(5),simMod; convertDict(dl)...)
-if  1 == 0
 ##---
 include(srcdir("sim_utilities.jl"))
 
 @time begin
-nWorkers=10
+nWorkers=40
 for dl = dict_list(paramList)
     println(dl)
     
@@ -117,7 +117,6 @@ for dl = dict_list(paramList)
     dl_save["results"] = res
     dl_save["runtime"] = t
     @tagsave(fnName, dl_save)
-end
 end
 end
 
