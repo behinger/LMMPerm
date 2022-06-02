@@ -9,6 +9,7 @@
 
 
 
+
 using DrWatson
 quickactivate(pwd(),"LMMPerm")
 
@@ -77,13 +78,32 @@ paramList = Dict(
     "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
     "nPerm"=> 1000,
 )
+
+#-----
+# Varying N
+paramList = Dict(
+    "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
+    "errorDistribution" => ["normal","tdist"],
+    "f" => [f3],
+    "σs" => [[[1., 1.], [0.,0.]]],
+    "σ" => 1.,
+    "β" => [[0., 0.],[0., 0.3]],
+    "nRep" => 5000,
+    "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
+    "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
+    "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
+    "nSubject" => [10,30],
+    "nItemsPerCondition" => [2,4,10],
+    "nPerm"=> 1000,
+)
+
 ##---
 include(srcdir("sim_utilities.jl"))
 
 
 
-simMod = sim_model(f4)
 dl = dict_list(paramList)[7]
+simMod = sim_model(f4;convertDict(dl)...)
 dl["nPerm"] = 10
 res = run_test(MersenneTwister(5),simMod; convertDict(dl)...)
 ##---

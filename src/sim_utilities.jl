@@ -7,8 +7,9 @@ using DataFrames
 using StatsBase
 using Distributions
 
-sim_model_getData() =  sim_model_getData(30,30)
-function sim_model_getData(nsub,nitem)
+
+function sim_model_getData(;nSubject=30,nItemsPerCondition=15,kwargs...)
+    
     subj_btwn = Dict("age" => ["O", "Y"])
 
     # there are no between-item factors in this design so you can omit it or set it to nothing
@@ -19,8 +20,8 @@ function sim_model_getData(nsub,nitem)
 
     # simulate data
     dat = simdat_crossed(
-        nsub,
-        nitem,
+        nSubject,
+        nItemsPerCondition,
         subj_btwn = subj_btwn,
         item_btwn = item_btwn,
         both_win = both_win,
@@ -28,8 +29,9 @@ function sim_model_getData(nsub,nitem)
     return dat
 
 end
-function sim_model(f;simulationCoding=DummyCoding)
-    dat = sim_model_getData()
+function sim_model(f;simulationCoding=DummyCoding,kwargs...)
+    
+       dat = sim_model_getData(;kwargs...)
     simMod = MixedModels.fit(MixedModel, f, dat,contrasts=Dict(:age=>simulationCoding(),:stimType=>simulationCoding(),:condition=>simulationCoding()),)
 
     return simMod
@@ -120,7 +122,7 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
 
 
     simMod = simulate!(rng, simMod, β = β, σ = σ)
-    dat = sim_model_getData() |> x-> DataFrame(x)
+    dat = sim_model_getData(;kwargs...) |> x-> DataFrame(x)
     # add noise
     y = simMod.y;
    
