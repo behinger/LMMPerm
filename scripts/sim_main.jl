@@ -102,10 +102,12 @@ include(srcdir("sim_utilities.jl"))
 
 
 
-dl = dict_list(paramList)[2]
+dl = dict_list(paramList)[1]
 simMod = sim_model(f4;convertDict(dl)...)
 dl["nPerm"] = 10
 res = run_test(MersenneTwister(5),simMod; convertDict(dl)...)
+			#@show res
+			#		  error("hello")
 ##---
 include(srcdir("sim_utilities.jl"))
 

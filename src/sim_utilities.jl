@@ -8,7 +8,7 @@ using StatsBase
 using Distributions
 
 
-function sim_model_getData(;nSubject=30,nItemsPerCondition=15,kwargs...)
+function sim_model_getData(;nSubject=missing,nItemsPerCondition=missing,kwargs...)
     subj_btwn = Dict("age" => ["O", "Y"])
 
     # there are no between-item factors in this design so you can omit it or set it to nothing
