@@ -9,7 +9,6 @@ using Distributions
 
 
 function sim_model_getData(;nSubject=30,nItemsPerCondition=15,kwargs...)
-    
     subj_btwn = Dict("age" => ["O", "Y"])
 
     # there are no between-item factors in this design so you can omit it or set it to nothing
@@ -17,7 +16,7 @@ function sim_model_getData(;nSubject=30,nItemsPerCondition=15,kwargs...)
 
     # put within-subject/item factors in a Dict
     both_win = Dict("condition" => ["A", "B"])
-
+    
     # simulate data
     dat = simdat_crossed(
         nSubject,
@@ -30,7 +29,6 @@ function sim_model_getData(;nSubject=30,nItemsPerCondition=15,kwargs...)
 
 end
 function sim_model(f;simulationCoding=DummyCoding,kwargs...)
-    
        dat = sim_model_getData(;kwargs...)
     simMod = MixedModels.fit(MixedModel, f, dat,contrasts=Dict(:age=>simulationCoding(),:stimType=>simulationCoding(),:condition=>simulationCoding()),)
 
@@ -73,8 +71,9 @@ function run_test_distributed(n_workers,simMod;nRep = missing,kwargs...)
     println("starting @distributed")
     println("Note: If nothing is starting, this is likely due to an error which will just freeze everything. Test it locally!")
     # parallel loop
-    @showprogress @distributed for k = 1:nRep
-        #println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
+    #@showprogress 
+    @distributed for k = 1:nRep
+        println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
         res = run_test(MersenneTwister(5000+k), deepcopy(simMod);kwargs...)
 
 

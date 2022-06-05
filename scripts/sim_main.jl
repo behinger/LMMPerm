@@ -1,6 +1,6 @@
 #!/home/st/st_us-051950/st_ac136984/julia-1.7.3/bin/julia
 #SBATCH --cpus-per-task 80
-# :: SBATCH --mem-per-cpu
+#SBATCH --mem-per-cpu 1000
 #SBATCH --nodes 1 
 #SBATCH -o slurmm/%x-%j.out
 #SBATCH --job-name=LMMPerm
@@ -92,8 +92,8 @@ paramList = Dict(
     "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
     "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
     "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
-    "nSubject" => [10],
-    "nItemsPerCondition" => [2,10],
+    "nSubject" => [10,30],
+    "nItemsPerCondition" => [2,10,30],
     "nPerm"=> 1000,
 )
 
@@ -102,7 +102,7 @@ include(srcdir("sim_utilities.jl"))
 
 
 
-dl = dict_list(paramList)[7]
+dl = dict_list(paramList)[2]
 simMod = sim_model(f4;convertDict(dl)...)
 dl["nPerm"] = 10
 res = run_test(MersenneTwister(5),simMod; convertDict(dl)...)
@@ -125,10 +125,11 @@ for dl = dict_list(paramList)
     fnName = datadir("cluster_sim", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
     if isfile(fnName)
         # don't calculate again
+	@show fnName
         continue
     end
 
-    simMod = sim_model(f4)
+    simMod = sim_model(f4;convertDict(dl)...)
 
     t = @elapsed begin
         res = run_test_distributed(nWorkers,simMod;convertDict(dl)...)
