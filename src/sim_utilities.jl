@@ -8,7 +8,7 @@ using StatsBase
 using Distributions
 
 
-function sim_model_getData(;nSubject=30,nItemsPerCondition=15,kwargs...)
+function sim_model_getData(;nSubject=missing,nItemsPerCondition=missing,kwargs...)
     subj_btwn = Dict("age" => ["O", "Y"])
 
     # there are no between-item factors in this design so you can omit it or set it to nothing
@@ -17,7 +17,7 @@ function sim_model_getData(;nSubject=30,nItemsPerCondition=15,kwargs...)
     # put within-subject/item factors in a Dict
     both_win = Dict("condition" => ["A", "B"])
     
-    # simulate data
+    # simulate data 
     dat = simdat_crossed(
         nSubject,
         nItemsPerCondition,
@@ -72,10 +72,10 @@ function run_test_distributed(n_workers,simMod;nRep = missing,kwargs...)
     println("Note: If nothing is starting, this is likely due to an error which will just freeze everything. Test it locally!")
     # parallel loop
     #@showprogress 
-    @distributed for k = 1:nRep
+    @sync @distributed for k = 1:nRep
         println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
         res = run_test(MersenneTwister(5000+k), deepcopy(simMod);kwargs...)
-
+        
 
 
         
@@ -89,6 +89,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,kwargs...)
             statResult2[k, :]  .= (res[2][Symbol("(Intercept)")],res[2][Symbol("condition: B")])
         
         end
+
     end
 
     #unpack
@@ -103,6 +104,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,kwargs...)
         df.test[df.test .== "default"] .= "β"
         df.test[df.test .== "default2"] .= "z"
     end
+    
     return df[df.pval .!= -1,:]
 
 end
