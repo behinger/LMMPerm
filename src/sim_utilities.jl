@@ -141,6 +141,7 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
     dat.dv = y
     simMod_inst = MixedModels.fit(MixedModel,f ,dat,contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
     simMod_inst.optsum.maxtime = 0.5 # restrict per-iteration fitting time
+    simMod_inst.optsum.maxfeval = 10000
     return simMod_inst
 end
 

@@ -67,7 +67,7 @@ paramList = Dict(
 # Power calculations
 paramList = Dict(
     "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
-    "errorDistribution" => ["normal","tdist"],
+    "errorDistribution" => ["normal"],#"tdist"],
     "f" => [f3],
     "σs" => [[[1., 1.], [0.,0.]]],
     "σ" => 1.,
@@ -92,8 +92,8 @@ paramList = Dict(
     "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
     "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
     "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
-    "nSubject" => [10,30],
-    "nItemsPerCondition" => [2,10,30],
+    "nSubject" => [4,10,30],
+    "nItemsPerCondition" => [2,10,30,50],
     "nPerm"=> 1000,
 )
 
