@@ -30,7 +30,11 @@ function sim_model_getData(;nSubject=missing,nItemsPerCondition=missing,kwargs..
 end
 function sim_model(f;simulationCoding=DummyCoding,kwargs...)
        dat = sim_model_getData(;kwargs...)
-    simMod = MixedModels.fit(MixedModel, f, dat,contrasts=Dict(:age=>simulationCoding(),:stimType=>simulationCoding(),:condition=>simulationCoding()),)
+       simMod = LinearMixedModel(f, dat; contrasts=Dict(:age=>simulationCoding(),:stimType=>simulationCoding(),:condition=>simulationCoding()))
+       simMod.optsum.maxtime = 0.5 # restrict per-iteration fitting time
+       simMod.optsum.maxfeval = 10000
+   
+    fit!(simMod)
 
     return simMod
 
@@ -139,8 +143,15 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
     end
     
     dat.dv = y
-    simMod_inst = MixedModels.fit(MixedModel,f ,dat,contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
+
+    simMod_inst = LinearMixedModel(f, dat; contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
     simMod_inst.optsum.maxtime = 0.5 # restrict per-iteration fitting time
+    simMod_inst.optsum.maxfeval = 10000
+
+    fit!(simMod_inst)
+
+
+    
     return simMod_inst
 end
 
