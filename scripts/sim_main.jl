@@ -1,10 +1,10 @@
 #!/home/st/st_us-051950/st_ac136984/julia-1.7.3/bin/julia
 #SBATCH --cpus-per-task 80
-#SBATCH --mem-per-cpu 1000
+#SBATCH --mem-per-cpu 1500
 #SBATCH --nodes 1 
 #SBATCH -o slurmm/%x-%j.out
 #SBATCH --job-name=LMMPerm
-#SBATCH --time 10:0:0 
+#SBATCH --time 20:0:0 
 
 
 
@@ -90,7 +90,7 @@ paramList = Dict(
     "β" => [[0., 0.],[0., 0.3]],
     "nRep" => 5000,
     "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
-    "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
+    "residualMethod" => [:signflip,:shuffle],
     "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
     "nSubject" => [4,10,30],
     "nItemsPerCondition" => [2,10,30,50],
@@ -124,7 +124,7 @@ for dl = dict_list(paramList)
         dl_save["residualMethod"]  = string(dl_save["residualMethod"])
     end
 
-    fnName = datadir("cluster_sim", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
+    fnName = datadir("cluster_sim2", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
     if isfile(fnName)
         # don't calculate again
 	@show fnName
