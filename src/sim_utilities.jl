@@ -65,7 +65,7 @@ function sim_model(f;simulationCoding=DummyCoding,kwargs...)
     return simMod
 
 end
-function run_test_distributed(n_workers,simMod;nRep = missing,kwargs...)
+function run_test_distributed(n_workers,simMod;nRep = missing,onsided=true,kwargs...)
     if nworkers() < n_workers
         # open as many as necessary
         println("Starting Workers, this might take some time")
@@ -92,8 +92,8 @@ function run_test_distributed(n_workers,simMod;nRep = missing,kwargs...)
             end,
         ),
     )
-    statResult1 = SharedArray{Float64}(nRep, length(coef(simMod)))
-    statResult2 = SharedArray{Float64}(nRep, length(coef(simMod)))
+    statResult1 = SharedArray{Float64}(nRep, length(coef(simMod)), (onsided ? 3 : 1)) # if onesided testing is activated, we get twosided + two onesided results
+    statResult2 = SharedArray{Float64}(nRep, length(coef(simMod)), (onsided ? 3 : 1))
     @everywhere @quickactivate "LMMPerm"
     @everywhere include(srcdir("sim_utilities.jl"))
     @everywhere include(srcdir("permutationtest_be.jl"))
@@ -104,32 +104,40 @@ function run_test_distributed(n_workers,simMod;nRep = missing,kwargs...)
     #@showprogress 
     @sync @distributed for k = 1:nRep
         println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
-        res = run_test(MersenneTwister(5000+k), deepcopy(simMod);kwargs...)
+        res = run_test(MersenneTwister(5000+k), deepcopy(simMod);onesided=onesided,kwargs...)
         
 
 
         
 
         if typeof(res) <: NamedTuple
-            val = (res[Symbol("(Intercept)")],res[Symbol("condition: B")])
-            statResult1[k, :] .= val    
-            statResult2[k, :] .= -1
-        else
-            statResult1[k, :]  .= (res[1][Symbol("(Intercept)")],res[1][Symbol("condition: B")])
-            statResult2[k, :]  .= (res[2][Symbol("(Intercept)")],res[2][Symbol("condition: B")])
+            val = vcat(res[Symbol("(Intercept)")],res[Symbol("condition: B")])
+            statResult1[k, :,:] .= val    
+            statResult2[k, :,:] .= -1
+        else 
+            # from permutation test we get a tuple of namedTuples, one for \beta (first) and one for z-test (second)
+            statResult1[k, :,:]  .= vcat(res[1][Symbol("(Intercept)")],res[1][Symbol("condition: B")])
+            statResult2[k, :,:]  .= vcat(res[2][Symbol("(Intercept)")],res[2][Symbol("condition: B")])
         
         end
 
     end
 
     #unpack
-    df = vcat(
-        DataFrame(Dict(:pval => statResult1[:,1],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default",:seed =>5000 .+ (1:nRep))),
-        DataFrame(Dict(:pval => statResult1[:,2],:coefname=>repeat(["condition: B"],nRep),:test=>"default",:seed =>5000 .+ (1:nRep))),
-        DataFrame(Dict(:pval => statResult2[:,1],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default2",:seed =>5000 .+ (1:nRep))),
-        DataFrame(Dict(:pval => statResult2[:,2],:coefname=>repeat(["condition: B"],nRep),:test=>"default2",:seed =>5000 .+ (1:nRep))))
     
-    if statResult2[1,1] !=-1.
+    
+    df = DataFrame()
+    labels = [:twosided, :lesser,:greater]
+    for k = 1: (onesided ? 3 : 1)
+        df = vcat(df,vcat(
+            DataFrame(Dict(:pval => statResult1[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default",:seed =>5000 .+ (1:nRep),:side=>labels[k])),
+            DataFrame(Dict(:pval => statResult1[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default",:seed =>5000 .+ (1:nRep),:side=>labels[k])),
+            DataFrame(Dict(:pval => statResult2[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default2",:seed =>5000 .+ (1:nRep),:side=>labels[k])),
+            DataFrame(Dict(:pval => statResult2[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default2",:seed =>5000 .+ (1:nRep),:side=>labels[k])))
+        )
+    end
+    
+    if statResult2[1,1,1] !=-1.
         # permutation
         df.test[df.test .== "default"] .= "β"
         df.test[df.test .== "default2"] .= "z"
@@ -168,7 +176,10 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
     elseif errorDistribution == "normal"
         
         #"nothing needs to happen"
-    else 
+    elseif errorDistribution == "skewed"
+        snorm = SkewNormal(0,1,5)
+        y = y .+ rand(rng,snorm-mean(snorm),length(y)) # parameterisation location != mean, thus remove (theoretical) mean
+    else
         @error "not implemented error function"
     end
     
@@ -204,28 +215,47 @@ function run_test(rng,simMod;statsMethod="permutation", kwargs...)
     return res
     
 end
-function run_pBoot(rng,simMod_instantiated;nBoot = 1000,kwargs...)
+function run_pBoot(rng,simMod_instantiated;nBoot = 1000,onesided=false,kwargs...)
     bootRes = parametricbootstrap(rng,nBoot,simMod_instantiated) # bootstrap
     covRes = DataFrame(shortestcovint(bootRes)) # get 95 convint 
     ci95 = covRes[(covRes.type.== "β"),[:names,:lower,:upper] ] # get the right parameter
     significant =  sign.(ci95.lower) .== sign.(ci95.upper) # check if sign equal, if yes, we have significance
 
-    return (;(Symbol.(ci95.names) .=> significant)...)
+    res = (;(Symbol.(ci95.names) .=> significant)...)
+    if onesided
+        sig_high =  ci95.lower .> 0 # e.g. [0.3 0.5]
+        sig_low =   ci95.upper .< 0 # e.g. [-1.3, -0.7]
+
+        # concatenate
+        res = (;(k=>[v low high] for (k,v,high,low) in zip(keys(res),values(res),sig_high,sig_low))...)
+    end
+    return res
 end
 
-function run_waldsT(rng,simMod_instantiated;kwargs...)
+function run_waldsT(rng,simMod_instantiated;onesided=false,kwargs...)
     x = coeftable(simMod_instantiated)
     pvals =  x.cols[x.pvalcol]
-    return (;(Symbol.(x.rownms) .=> pvals)...) # we can report two p-vals, might be changed
+    res = (;(Symbol.(x.rownms) .=> pvals)...)
+
+    if onesided
+        z_signs =  sign.(x.cols[x.teststatcol])
+        flipSign = (x,y) -> x>0. ? 1-y : y
+
+        sig_low = flipSign.(z_signs,pvals ./ 2)
+        sig_high = flipSign.(.-z_signs,pvals ./ 2)
+        # concatenate
+        res = (;(k=>[v low high] for (k,v,high,low) in zip(keys(res),values(res),sig_high,sig_low))...)
+    end
+    return  res # we can report two p-vals, might be changed
 end
 
-function run_LRT(rng,simMod_instantiated;kwargs...)
+function run_LRT(rng,simMod_instantiated;onesided=false,kwargs...)
     error("not implemented")
     simMod_instantiated
 
 end
 
-function run_permutationtest(rng,simMod_instantiated;nPerm=missing,residualMethod=missing,blupMethod=missing,  inflationMethod=missing,residuals=residuals,kwargs...)
+function run_permutationtest(rng,simMod_instantiated;nPerm=missing,residualMethod=missing,blupMethod=missing,  inflationMethod=missing,residuals=residuals,onesided=false,kwargs...)
 
     
     if typeof(blupMethod) <: String
@@ -260,7 +290,26 @@ function run_permutationtest(rng,simMod_instantiated;nPerm=missing,residualMetho
     p_β = permutationtest_be(perm, simMod_instantiated; statistic = :β)
     p_z = permutationtest_be(perm, simMod_instantiated; statistic = :z)
 
-    return (p_β, p_z)
+    res = (p_β, p_z)
+    if onesided
+        p_β_greater = permutationtest_be(perm, simMod_instantiated; statistic = :β,type=:greater)
+        p_β_lesser = permutationtest_be(perm, simMod_instantiated; statistic = :β,type=:lesser)
+        p_z_greater = permutationtest_be(perm, simMod_instantiated; statistic = :z,type=:greater)
+        p_z_lesser = permutationtest_be(perm, simMod_instantiated; statistic = :z,type=:lesser)
+        
+        resA = NamedTuple()
+        resB = NamedTuple()
+        # concatenate
+        for k in keys(res[1])
+            
+        resA = merge(resA,(;k => hcat(res[1][k],p_β_lesser[k],p_β_greater[k])))
+        resB = merge(resB,(;k => hcat(res[2][k],p_z_lesser[k],p_z_greater[k])))
+        end
+        res = (resA,resB)
+        
+    end
+
+    return res
 
    end
 
