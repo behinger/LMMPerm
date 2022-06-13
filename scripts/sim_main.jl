@@ -162,7 +162,7 @@ res = run_test(MersenneTwister(1),simMod; convertDict(dl)...)
 include(srcdir("sim_utilities.jl"))
 
 @time begin
-nWorkers=80
+nWorkers=10
 for dl = dict_list(paramList)
     println(dl)
     
