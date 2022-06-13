@@ -123,7 +123,11 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
         σ = 0.0001
         σs = σs ./ σ
     end
-    simMod = MixedModelsSim.update!(simMod,[create_re(x...) for x in σs]...)
+
+    σs =(;subj=σs[1], item=σs[2]) # these are now the variances
+    re = NamedTuple{propertynames(σs)}(create_re(s...) for s in values(σs))
+
+    simMod = MixedModelsSim.update!(simMod;re...)
 
 
     simMod = simulate!(rng, simMod, β = β, σ = σ)
