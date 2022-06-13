@@ -2,7 +2,7 @@
 #SBATCH --cpus-per-task 80
 #SBATCH --mem-per-cpu 1500
 #SBATCH --nodes 1 
-#SBATCH -o slurmm/%x-%j-%t.out
+#SBATCH -o slurmm/%x-%j.out
 #SBATCH --job-name=LMMPerm
 #SBATCH --time 20:0:0 
 #SBATCH --array=1,3
@@ -24,10 +24,11 @@ f3 =  @formula(dv ~ 1 + condition  + (1+condition|subj))
 f4 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
 
 try
-task = Base.parse(Int, ENV["SLURM_ARRAY_TASK_ID"])
+	global task = Base.parse(Int, ENV["SLURM_ARRAY_TASK_ID"])
 catch KeyError
-    task = 4
+    global task = 1
 end
+@show task
 #---h0 tests
 if task == 1
 paramList = Dict(
@@ -157,7 +158,7 @@ for dl = dict_list(paramList)
         continue
     end
 
-    simMod = sim_model(dl["f"];convertDict(dl)...)
+    simMod = sim_model(f4;convertDict(dl)...)
 
     t = @elapsed begin
         res = run_test_distributed(nWorkers,simMod;convertDict(dl)...)
