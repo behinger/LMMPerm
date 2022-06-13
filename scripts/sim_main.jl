@@ -2,10 +2,10 @@
 #SBATCH --cpus-per-task 80
 #SBATCH --mem-per-cpu 1500
 #SBATCH --nodes 1 
-#SBATCH -o slurmm/%x-%j.out
+#SBATCH -o slurmm/%x-%j-%t.out
 #SBATCH --job-name=LMMPerm
 #SBATCH --time 20:0:0 
-
+#SBATCH --array=1,3
 
 
 
@@ -23,7 +23,13 @@ f2 =  @formula(dv ~ 1 + condition  + zerocorr(1+condition|subj))
 f3 =  @formula(dv ~ 1 + condition  + (1+condition|subj))
 f4 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
 
+try
+task = Base.parse(Int, ENV["SLURM_ARRAY_TASK_ID"])
+catch KeyError
+    task = 4
+end
 #---h0 tests
+if task == 1
 paramList = Dict(
     "f" => [f1,f3,f4],
     "σs" => [@onlyif("f"!= f4, [[1., 0.],[0.,0.]]),
@@ -45,7 +51,7 @@ paramList = Dict(
     "nItemsPerCondition" => [30],
     
 )
-
+elseif task == 2
 #----
 # H1 test
 paramList = Dict(
@@ -67,6 +73,7 @@ paramList = Dict(
 
 )
 
+elseif task == 3
 #----
 # Power calculations
 paramList = Dict(
@@ -85,6 +92,8 @@ paramList = Dict(
     "nPerm"=> 1000,
 )
 
+
+elseif task == 4
 #-----
 # Varying N
 paramList = Dict(
@@ -102,6 +111,7 @@ paramList = Dict(
     "nItemsPerCondition" => [2,10,30,50],
     "nPerm"=> 1000,
 )
+end
 
 ##---
 include(srcdir("sim_utilities.jl"))
