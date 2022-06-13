@@ -26,7 +26,7 @@ f4 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
 try
 task = Base.parse(Int, ENV["SLURM_ARRAY_TASK_ID"])
 catch KeyError
-    task = 4
+    task = 5
 end
 #---h0 tests
 if task == 1
@@ -111,6 +111,26 @@ paramList = Dict(
     "nItemsPerCondition" => [2,10,30],
     "nPerm"=> 1000,
 )
+
+elseif task == 5
+    #-----
+    # Varying N
+    paramList = Dict(
+        "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
+        "errorDistribution" => ["normal","tdist","skewed"],
+        "imbalance" => ["subject","trial"],
+        "f" => [f3],
+        "σs" => [[[1., 1.],[0.,0.]]],
+        "σ" => 1.,
+        "β" => [[0., 0.]],
+        "nRep" => 5000,
+        "blupMethod" => [ranef],
+        "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
+        "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
+        "nSubject" => [30],
+        "nItemsPerCondition" => [30],
+        "nPerm"=> 1000,
+    )
 end
 
 ##---
@@ -118,7 +138,8 @@ include(srcdir("sim_utilities.jl"))
 
 
 
-dl = dict_list(paramList)[4]
+dl = dict_list(paramList)[1]
+dl["imbalance"] = "trial"
 #dl["nPerm"] = 10
 #dl["nSubject"] = 30
 #dl["nItemsPerCondition"] = 50

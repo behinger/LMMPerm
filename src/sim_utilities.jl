@@ -8,7 +8,7 @@ using StatsBase
 using Distributions
 
 
-function sim_model_getData(;nSubject=missing,nItemsPerCondition=missing,kwargs...)
+function sim_model_getData(;nSubject=missing,nItemsPerCondition=missing,imbalance=nothing,kwargs...)
     subj_btwn = Dict("age" => ["O", "Y"])
 
     # there are no between-item factors in this design so you can omit it or set it to nothing
@@ -25,6 +25,32 @@ function sim_model_getData(;nSubject=missing,nItemsPerCondition=missing,kwargs..
         item_btwn = item_btwn,
         both_win = both_win,
     )
+    dat = DataFrame(dat)
+    if imbalance == "trial"
+        ix = findall(dat.condition .== "II")
+        goodIx = [i  ∉ ix[randperm(length(ix))[Int.(round.(1:0.2*length(ix)))]] for i in 1:nrow(dat)]
+
+    elseif imbalance == "subject"
+        goodIx = Int[]
+        uniqueSub = unique(dat.subj)
+        for s = 1:length(uniqueSub)
+            fractionToKeep = s*1/length(uniqueSub)
+            ix = findall(dat.subj .== uniqueSub[s])
+            #@show fractionToKeep
+            goodIx_sub = ix[randperm(length(ix))[Int.(round.(1:fractionToKeep*length(ix)))]]
+            #@show length(goodIx_sub)
+            append!(goodIx,goodIx_sub)
+
+        
+        end
+    else
+        # nothing to do here
+        goodIx = 1:nrow(dat)
+    end
+    dat = dat[goodIx,:]
+    
+    
+
     return dat
 
 end
