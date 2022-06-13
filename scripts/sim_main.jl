@@ -26,10 +26,10 @@ f4 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
 #---h0 tests
 paramList = Dict(
     "f" => [f1,f3,f4],
-    "σs" => [@onlyif("f"!= f4, [[1., 0.], [0.,0.]]),
-             @onlyif("f"!= f4, [[1., 1.], [0.,0.]]),  
-             @onlyif("f"!= f4, [[1., 4.], [0.,0.]]),
-             @onlyif("f"!= f4, [[4., 1.], [0.,0.]]),
+    "σs" => [@onlyif("f"== f1, [[1.]]),
+             @onlyif("f"!= f4, [[1., 1.]]),  
+             @onlyif("f"!= f4, [[1., 4.]]),
+             @onlyif("f"!= f4, [[4., 1.]]),
 
              @onlyif("f"== f4, [[1., 1.], [1., 0.]]),
              @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
@@ -48,9 +48,9 @@ paramList = Dict(
 # H1 test
 paramList = Dict(
     "f" => [f1,f3,f4],
-    "σs" => [@onlyif("f"== f1, [[1., 0.], [0.,0.]]),
-             @onlyif("f"== f3, [[1., 1.], [0.,0.]]),  
-             @onlyif("f"== f3, [[1., 4.], [0.,0.]]),
+    "σs" => [@onlyif("f"== f1, [[1.]]),
+             @onlyif("f"== f3, [[1., 1.]]),  
+             @onlyif("f"== f3, [[1., 4.]]),
              @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
              ],
     "σ" => 1.,
@@ -69,11 +69,11 @@ paramList = Dict(
     "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
     "errorDistribution" => ["normal"],#"tdist"],
     "f" => [f3],
-    "σs" => [[[1., 1.], [0.,0.]]],
+    "σs" => [[1., 1.]],
     "σ" => 1.,
     "β" => [[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]],
     "nRep" => 5000,
-    "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
+    "blupMethod" => [ranef,olsranef],
     "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
     "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
     "nPerm"=> 1000,
@@ -85,12 +85,12 @@ paramList = Dict(
     "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
     "errorDistribution" => ["normal","tdist"],
     "f" => [f3],
-    "σs" => [[[1., 1.], [0.,0.]]],
+    "σs" => [[[1., 1.]]],
     "σ" => 1.,
     "β" => [[0., 0.],[0., 0.3]],
     "nRep" => 5000,
-    "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
-    "residualMethod" => [:signflip,:shuffle],
+    "blupMethod" => [ranef,olsranef],
+    "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
     "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
     "nSubject" => [4,10,30],
     "nItemsPerCondition" => [2,10,30,50],
@@ -102,12 +102,24 @@ include(srcdir("sim_utilities.jl"))
 
 
 
-dl = dict_list(paramList)[1]
-simMod = sim_model(f4;convertDict(dl)...)
-dl["nPerm"] = 10
-res = run_test(MersenneTwister(5),simMod; convertDict(dl)...)
-			#@show res
-			#		  error("hello")
+dl = dict_list(paramList)[4]
+#dl["nPerm"] = 10
+#dl["nSubject"] = 30
+#dl["nItemsPerCondition"] = 50
+#dl["σ"] = 0.01
+#dl["f"] = f1
+#dl["σs"] = [[0.,0.]]#,[0.,0.]]
+simMod = sim_model(dl["f"];convertDict(dl)...)
+rng = MersenneTwister(1)
+
+res = run_test(MersenneTwister(1),simMod; convertDict(dl)...)
+
+#x = map(x->run_test(MersenneTwister(x),simMod; convertDict(dl)...),1:100)
+#mean([y[2]<0.05 for y in x])
+
+
+
+
 ##---
 include(srcdir("sim_utilities.jl"))
 
@@ -131,7 +143,7 @@ for dl = dict_list(paramList)
         continue
     end
 
-    simMod = sim_model(f4;convertDict(dl)...)
+    simMod = sim_model(dl["f"];convertDict(dl)...)
 
     t = @elapsed begin
         res = run_test_distributed(nWorkers,simMod;convertDict(dl)...)
