@@ -1,10 +1,10 @@
 #!/home/st/st_us-051950/st_ac136984/julia-1.7.3/bin/julia
 #SBATCH --cpus-per-task 80
-#SBATCH --mem-per-cpu 1000
+#SBATCH --mem-per-cpu 1500
 #SBATCH --nodes 1 
-#SBATCH -o slurmm/%x-%j-%t.out
+#SBATCH -o slurmm/%x-%j.out
 #SBATCH --job-name=LMMPerm
-#SBATCH --time 10:0:0 
+#SBATCH --time 20:0:0 
 #SBATCH --array=1,3
 
 
@@ -24,10 +24,13 @@ f3 =  @formula(dv ~ 1 + condition  + (1+condition|subj))
 f4 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
 
 try
-task = Base.parse(Int, ENV["SLURM_ARRAY_TASK_ID"])
+	global task = Base.parse(Int, ENV["SLURM_ARRAY_TASK_ID"])
 catch KeyError
-    task = 5
+
+    global task = 5
+
 end
+@show task
 #---h0 tests
 if task == 1
 paramList = Dict(
@@ -78,7 +81,7 @@ elseif task == 3
 # Power calculations
 paramList = Dict(
     "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
-    "errorDistribution" => ["normal","tdist"],
+    "errorDistribution" => ["normal"],#"tdist"],
     "f" => [f3],
     "σs" => [[[1., 1.],[0.,0.]]],
     "σ" => 1.,
@@ -107,8 +110,8 @@ paramList = Dict(
     "blupMethod" => [ranef,olsranef],
     "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
     "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
-    "nSubject" => [10,30],
-    "nItemsPerCondition" => [2,10,30],
+    "nSubject" => [4,10,30],
+    "nItemsPerCondition" => [2,10,30,50],
     "nPerm"=> 1000,
 )
 
@@ -152,7 +155,6 @@ res = run_test(MersenneTwister(1),simMod; convertDict(dl)...)
 #x = map(x->run_test(MersenneTwister(x),simMod; convertDict(dl)...),1:100)
 #mean([y[2]<0.05 for y in x])
 
-##---
 
 
 
@@ -172,14 +174,14 @@ for dl = dict_list(paramList)
         dl_save["residualMethod"]  = string(dl_save["residualMethod"])
     end
 
-    fnName = datadir("cluster_sim", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
+    fnName = datadir("cluster_sim2", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
     if isfile(fnName)
         # don't calculate again
 	@show fnName
         continue
     end
 
-    simMod = sim_model(dl["f"];convertDict(dl)...)
+    simMod = sim_model(f4;convertDict(dl)...)
 
     t = @elapsed begin
         res = run_test_distributed(nWorkers,simMod;convertDict(dl)...)

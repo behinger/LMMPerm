@@ -180,8 +180,6 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
 
     fit!(simMod_inst)
 
-
-    
     return simMod_inst
 end
 
