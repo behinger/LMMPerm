@@ -5,7 +5,6 @@
 #SBATCH -o slurmm/%x-%j.out
 #SBATCH --job-name=LMMPerm
 #SBATCH --time 20:0:0 
-#SBATCH --array=1,3
 
 
 
