@@ -92,8 +92,8 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
             end,
         ),
     )
-    statResult1 = SharedArray{Float64}(nRep, length(coef(simMod)), (onsided ? 3 : 1)) # if onesided testing is activated, we get twosided + two onesided results
-    statResult2 = SharedArray{Float64}(nRep, length(coef(simMod)), (onsided ? 3 : 1))
+    statResult1 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1)) # if onesided testing is activated, we get twosided + two onesided results
+    statResult2 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1))
     @everywhere @quickactivate "LMMPerm"
     @everywhere include(srcdir("sim_utilities.jl"))
     @everywhere include(srcdir("permutationtest_be.jl"))
