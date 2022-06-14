@@ -65,7 +65,7 @@ function sim_model(f;simulationCoding=DummyCoding,kwargs...)
     return simMod
 
 end
-function run_test_distributed(n_workers,simMod;nRep = missing,onsided=true,kwargs...)
+function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwargs...)
     if nworkers() < n_workers
         # open as many as necessary
         println("Starting Workers, this might take some time")
