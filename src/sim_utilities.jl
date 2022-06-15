@@ -223,8 +223,12 @@ function run_pBoot(rng,simMod_instantiated;nBoot = 1000,onesided=false,kwargs...
 
     res = (;(Symbol.(ci95.names) .=> significant)...)
     if onesided
-        sig_high =  ci95.lower .> 0 # e.g. [0.3 0.5]
-        sig_low =   ci95.upper .< 0 # e.g. [-1.3, -0.7]
+        covRes90 = DataFrame(shortestcovint(bootRes),level=0.90) # get 90 convint for one sided testing
+        ci90 = covRes90[(covRes90.type.== "β"),[:names,:lower,:upper] ] # get the right parameter
+        
+
+        sig_high =  ci90.lower .> 0 # e.g. [0.3 0.5]
+        sig_low =   ci90.upper .< 0 # e.g. [-1.3, -0.7]
 
         # concatenate
         res = (;(k=>[v low high] for (k,v,high,low) in zip(keys(res),values(res),sig_high,sig_low))...)
