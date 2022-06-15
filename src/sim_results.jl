@@ -12,12 +12,20 @@ end
     
 
 	# calculate p < 0.05
-c = @rtransform(c,:p = combine(groupby(:results,["coefname","test"]),Symbol("pval") => x->mean(x .<= .05)))
+
+    for r = 1:nrow(c)
+        x = c[r,:]     
+        if "side"  ∉ names(x.results)
+            x.results[!,"side"] .= "twosided"
+        end
+    end
+
+c = @rtransform(c,:p = combine(groupby(:results,["coefname","test", "side"]),Symbol("pval") => x->mean(x .<= .05)))
 
 	# move result table to own columns
-c = @rtransform(c,:coefname = :p.coefname,:test=:p.test,:pval=:p.pval_function)
+c = @rtransform(c,:coefname = :p.coefname,:test=:p.test,:pval=:p.pval_function,:side=:p.side)
 
-c = flatten(c,[:coefname,:test,:pval])[:,Not([:p,:results])]
+c = flatten(c,[:coefname,:test,:pval,:side])[:,Not([:p,:results])]
 
 	# replace missing statsmethod with permutation
 	c.statsMethod[ismissing.(c.statsMethod)] .= "permutation"
