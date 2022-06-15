@@ -129,7 +129,7 @@ elseif task == 5
         "blupMethod" => [ranef],
         "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
         "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
-        "nSubject" => [30],
+        "nSubject" => [10,30],
         "nItemsPerCondition" => [30],
         "nPerm"=> 1000,
     )
@@ -161,7 +161,7 @@ res = run_test(MersenneTwister(1),simMod; convertDict(dl)...)
 include(srcdir("sim_utilities.jl"))
 
 @time begin
-nWorkers=10
+nWorkers=80
 for dl = dict_list(paramList)
     println(dl)
     
