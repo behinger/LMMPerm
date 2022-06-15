@@ -223,7 +223,7 @@ function run_pBoot(rng,simMod_instantiated;nBoot = 1000,onesided=false,kwargs...
 
     res = (;(Symbol.(ci95.names) .=> significant)...)
     if onesided
-        covRes90 = DataFrame(shortestcovint(bootRes,level=0.90)) # get 90 convint for one sided testing
+        covRes90 = DataFrame(shortestcovint(bootRes,0.90)) # get 90 convint for one sided testing
         ci90 = covRes90[(covRes90.type.== "β"),[:names,:lower,:upper] ] # get the right parameter
         
 
