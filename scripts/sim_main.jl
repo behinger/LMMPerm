@@ -116,7 +116,7 @@ paramList = Dict(
 
 elseif task == 5
     #-----
-    # Varying N
+    # Errordistributions
     paramList = Dict(
         "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
         "errorDistribution" => ["normal","tdist","skewed"],
@@ -127,7 +127,7 @@ elseif task == 5
         "β" => [[0., 0.]],
         "nRep" => 5000,
         "blupMethod" => [ranef],
-        "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
+        "residualMethod" => [@onlyif("statsMethod"=="permutation",:shuffle),@onlyif("statsMethod"=="permutation",:signflip)],
         "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
         "nSubject" => [10,30],
         "nItemsPerCondition" => [30],
@@ -173,7 +173,7 @@ for dl = dict_list(paramList)
         dl_save["residualMethod"]  = string(dl_save["residualMethod"])
     end
 
-    fnName = datadir("cluster_sim2", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
+    fnName = datadir("cluster_sim3", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
     if isfile(fnName)
         # don't calculate again
 	@show fnName
