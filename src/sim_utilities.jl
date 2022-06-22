@@ -71,7 +71,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
         # open as many as necessary
         println("Starting Slurmm workers, this might take some time")
         addprocs(
-            SlurmClusterManager(),
+            SlurmManager(),
             exeflags = "--project",
             #enable_threaded_blas = true, # not sure SlurmClusterManager supports this
         )
