@@ -6,6 +6,7 @@ using BlockDiagonals,LinearAlgebra
 using DataFrames
 using StatsBase
 using Distributions
+using SlurmClusterManager
 
 
 function sim_model_getData(;nSubject=missing,nItemsPerCondition=missing,imbalance=nothing,kwargs...)
@@ -70,9 +71,9 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
         # open as many as necessary
         println("Starting Workers, this might take some time")
         addprocs(
-            n_workers - nworkers() + 1,
+            SlurmClusterManager()
             exeflags = "--project",
-            enable_threaded_blas = true,
+            #enable_threaded_blas = true,
         )
     end
     
