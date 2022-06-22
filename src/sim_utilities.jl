@@ -415,4 +415,133 @@ function expandgrid(df1, df2)
     end
     return reduce(vcat, a)
 end
+
+
+function getParamList(task)
+    if task == 1
+        paramList = Dict(
+            "statsMethod" => "permutation",
+            "f" => [f1,f3,f4],
+            "σs" => [@onlyif("f"!= f4, [[1., 0.],[0.,0.]]),
+                     @onlyif("f"!= f4, [[1., 1.],[0.,0.]]),  
+                     @onlyif("f"!= f4, [[1., 4.],[0.,0.]]),
+                     @onlyif("f"!= f4, [[4., 1.],[0.,0.]]),
+        
+                     @onlyif("f"== f4, [[1., 1.], [1., 0.]]),
+                     @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
+                     @onlyif("f"== f4, [[1., 1.], [1., 4.]])],
+            "σ" => 1.,
+            "β" => [[0., 0.]],
+            "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
+            "inflationMethod" => [MixedModelsPermutations.inflation_factor,"noScaling"],
+            "residualMethod" => [:signflip,:shuffle],#[:signflip,:shuffle],"
+            "nRep" => 5000,
+            "nSubject" => [30],
+            "nItemsPerCondition" => [30],
+            "nPerm"=> 1000,
+            
+        )
+        elseif task == 2
+        #----
+        # H1 test
+        paramList = Dict(
+            "statsMethod" => "permutation",
+            "f" => [f1,f3,f4],
+            "σs" => [@onlyif("f"== f1, [[1., 0.], [0.,0.]]),
+                     @onlyif("f"== f3, [[1., 1.], [0.,0.]]),  
+                     @onlyif("f"== f3, [[1., 4.], [0.,0.]]),
+                     @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
+                     ],
+            "σ" => 1.,
+            "β" => [[0., 0.],[0., 0.1],[0., 1.]],
+            "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
+            "inflationMethod" => [MixedModelsPermutations.inflation_factor,"noScaling"],
+            "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
+            "nRep" => 5000,
+            "nPerm"=> 1000,
+            "nSubject" => [30],
+            "nItemsPerCondition" => [30],
+        
+        )
+        
+        elseif task == 3
+        #----
+        # Power calculations
+        paramList = Dict(
+            "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
+            "errorDistribution" => ["normal"],#"tdist"],
+            "f" => [f3],
+            "σs" => [[[1., 1.],[0.,0.]]],
+            "σ" => 1.,
+            "β" => [[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]],
+            "nRep" => 5000,
+            "blupMethod" => [@onlyif("statsMethod"=="permutation",ranef),
+                             @onlyif("statsMethod"=="permutation",olsranef)],
+            "residualMethod" => [@onlyif("statsMethod"=="permutation",:shuffle)],#[:signflip,:shuffle],"
+            "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
+            "nSubject" => [30],
+            "nItemsPerCondition" => [30],
+            "nPerm"=> @onlyif("statsMethod"=="permutation",1000),
+        
+        )
+        
+        
+        elseif task == 4
+        #-----
+        # Varying N
+        paramList = Dict(
+            "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
+            "errorDistribution" => ["normal","tdist"],
+            "f" => [f3],
+            "σs" => [[[1., 1.],[0.,0.]]],
+            "σ" => 1.,
+            "β" => [[0., 0.],[0., 0.3]],
+            "nRep" => 5000,
+            "blupMethod" => [@onlyif("statsMethod"=="permutation",ranef),
+                             @onlyif("statsMethod"=="permutation",olsranef)],
+            "residualMethod" => [@onlyif("statsMethod"=="permutation",:shuffle)],#[:signflip,:shuffle],"
+            "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
+            "nSubject" => [4,10,30],
+            "nItemsPerCondition" => [2,10,30,50],
+            "nPerm"=> @onlyif("statsMethod"=="permutation",1000),
+        )
+        
+        elseif task == 5
+            #-----
+            # Errordistributions + balancing
+            paramList = Dict(
+                "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
+                "errorDistribution" => ["normal","tdist","skewed"],
+                "imbalance" => ["subject","trial"],
+                "f" => [f3],
+                "σs" => [[[1., 1.],[0.,0.]]],
+                "σ" => 1.,
+                "β" => [[0., 0.]],
+                "nRep" => 5000,
+                "blupMethod" => [ranef],
+                "residualMethod" => [@onlyif("statsMethod"=="permutation",:shuffle),@onlyif("statsMethod"=="permutation",:signflip)],
+                "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
+                "nSubject" => [10,30],
+                "nItemsPerCondition" => [30],
+                "nPerm"=> 1000,
+            )
+        end
+        return paramList
+end
+
+function dl_filename(dl)
+    dl_save =deepcopy(dl)
+    dl_save["f"]  = string(dl_save["f"].rhs)|>x->replace(x," "=>"") # rename formula
+
+
+    if "residualMethod" ∈ keys(dl_save)
+        dl_save["residualMethod"]  = string(dl_save["residualMethod"])
+    end
+
+    fnName = datadir("cluster_task-$task", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
+    return fnName
+end
 println("loaded sim_utilities")
+
+
+
