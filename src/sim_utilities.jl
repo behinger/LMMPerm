@@ -172,19 +172,16 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
    
     if errorDistribution == "tdist"
         
-        y = y .+ (rand(rng,TDist(3),length(y)) .* σ)
+        y = y .+ (rand(rng,TDist(3),length(y)) .* σ_org)
 
     elseif errorDistribution == "normal"
         
         #"nothing needs to happen"
     elseif errorDistribution == "skewed"
         snorm = SkewNormal(0,σ_org,10)
-        @show snorm
-        @show std(y)
-        @show mean(y)
+        
         y = y .+ rand(rng,snorm-mean(snorm),length(y)) # parameterisation location != mean, thus remove (theoretical) mean
-        @show std(y)
-        @show mean(y)
+        
     else
         @error "not implemented error function"
     end
