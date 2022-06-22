@@ -121,7 +121,7 @@ paramList = Dict(
 
 elseif task == 5
     #-----
-    # Errordistributions
+    # Errordistributions + balancing
     paramList = Dict(
         "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
         "errorDistribution" => ["normal","tdist","skewed"],
