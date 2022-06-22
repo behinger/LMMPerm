@@ -77,7 +77,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
         )
     elseif nworkers() < n_workers
             # open as many as necessary
-            println("Starting Slurmm workers, this might take some time")
+            println("Starting workers, this might take some time")
             addprocs(
                 n_workers = n_workers,
                 exeflags = "--project",
