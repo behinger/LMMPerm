@@ -152,7 +152,8 @@ end
 function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  analysisCoding = DummyCoding,errorDistribution="normal",kwargs...)
     @assert all(.!ismissing.([f,β,σs]))
 
-    if errorDistribution == "tdist"
+    if errorDistribution != "normal" 
+        #deactivate normal noise
         σ_org = σ    
         σ = 0.0001
         σs = σs ./ σ
@@ -171,19 +172,24 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
    
     if errorDistribution == "tdist"
         
-        y = y .+ rand(rng,TDist(3),length(y))
+        y = y .+ (rand(rng,TDist(3),length(y)) .* σ)
 
     elseif errorDistribution == "normal"
         
         #"nothing needs to happen"
     elseif errorDistribution == "skewed"
-        snorm = SkewNormal(0,1,5)
+        snorm = SkewNormal(0,σ_org,10)
+        @show snorm
+        @show std(y)
+        @show mean(y)
         y = y .+ rand(rng,snorm-mean(snorm),length(y)) # parameterisation location != mean, thus remove (theoretical) mean
+        @show std(y)
+        @show mean(y)
     else
         @error "not implemented error function"
     end
     
-    dat.dv = y
+    dat.dv .= y
 
     simMod_inst = LinearMixedModel(f, dat; contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
     simMod_inst.optsum.maxtime = 0.5 # restrict per-iteration fitting time
