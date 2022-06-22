@@ -1,10 +1,10 @@
 #!/home/st/st_us-051950/st_ac136984/julia-1.7.3/bin/julia
-#SBATCH --cpus-per-task 28
+#SBATCH --cpus-per-task 40
 #SBATCH --mem-per-cpu 1500
-#SBATCH --nodes 10
+#SBATCH --nodes 1
 #SBATCH -o slurmm/%x-%j.out
 #SBATCH --job-name=LMMPerm
-#SBATCH --time 20:0:0 
+#SBATCH --time 40:0:0 
 
 
 
@@ -31,114 +31,7 @@ catch KeyError
 end
 @show task
 #---h0 tests
-if task == 1
-paramList = Dict(
-    "statsMethod" => "permutation",
-    "f" => [f1,f3,f4],
-    "σs" => [@onlyif("f"!= f4, [[1., 0.],[0.,0.]]),
-             @onlyif("f"!= f4, [[1., 1.],[0.,0.]]),  
-             @onlyif("f"!= f4, [[1., 4.],[0.,0.]]),
-             @onlyif("f"!= f4, [[4., 1.],[0.,0.]]),
-
-             @onlyif("f"== f4, [[1., 1.], [1., 0.]]),
-             @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
-             @onlyif("f"== f4, [[1., 1.], [1., 4.]])],
-    "σ" => 1.,
-    "β" => [[0., 0.]],
-    "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
-    "inflationMethod" => [MixedModelsPermutations.inflation_factor,"noScaling"],
-    "residualMethod" => [:signflip,:shuffle],#[:signflip,:shuffle],"
-    "nRep" => 5000,
-    "nSubject" => [30],
-    "nItemsPerCondition" => [30],
-    "nPerm"=> 1000,
-    
-)
-elseif task == 2
-#----
-# H1 test
-paramList = Dict(
-    "statsMethod" => "permutation",
-    "f" => [f1,f3,f4],
-    "σs" => [@onlyif("f"== f1, [[1., 0.], [0.,0.]]),
-             @onlyif("f"== f3, [[1., 1.], [0.,0.]]),  
-             @onlyif("f"== f3, [[1., 4.], [0.,0.]]),
-             @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
-             ],
-    "σ" => 1.,
-    "β" => [[0., 0.],[0., 0.1],[0., 1.]],
-    "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
-    "inflationMethod" => [MixedModelsPermutations.inflation_factor,"noScaling"],
-    "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
-    "nRep" => 5000,
-    "nPerm"=> 1000,
-    "nSubject" => [30],
-    "nItemsPerCondition" => [30],
-
-)
-
-elseif task == 3
-#----
-# Power calculations
-paramList = Dict(
-    "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
-    "errorDistribution" => ["normal"],#"tdist"],
-    "f" => [f3],
-    "σs" => [[[1., 1.],[0.,0.]]],
-    "σ" => 1.,
-    "β" => [[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]],
-    "nRep" => 5000,
-    "blupMethod" => [@onlyif("statsMethod"=="permutation",ranef),
-                     @onlyif("statsMethod"=="permutation",olsranef)],
-    "residualMethod" => [@onlyif("statsMethod"=="permutation",:shuffle)],#[:signflip,:shuffle],"
-    "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
-    "nSubject" => [30],
-    "nItemsPerCondition" => [30],
-    "nPerm"=> @onlyif("statsMethod"=="permutation",1000),
-
-)
-
-
-elseif task == 4
-#-----
-# Varying N
-paramList = Dict(
-    "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
-    "errorDistribution" => ["normal","tdist"],
-    "f" => [f3],
-    "σs" => [[[1., 1.],[0.,0.]]],
-    "σ" => 1.,
-    "β" => [[0., 0.],[0., 0.3]],
-    "nRep" => 5000,
-    "blupMethod" => [@onlyif("statsMethod"=="permutation",ranef),
-                     @onlyif("statsMethod"=="permutation",olsranef)],
-    "residualMethod" => [@onlyif("statsMethod"=="permutation",:shuffle)],#[:signflip,:shuffle],"
-    "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
-    "nSubject" => [4,10,30],
-    "nItemsPerCondition" => [2,10,30,50],
-    "nPerm"=> @onlyif("statsMethod"=="permutation",1000),
-)
-
-elseif task == 5
-    #-----
-    # Errordistributions + balancing
-    paramList = Dict(
-        "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
-        "errorDistribution" => ["normal","tdist","skewed"],
-        "imbalance" => ["subject","trial"],
-        "f" => [f3],
-        "σs" => [[[1., 1.],[0.,0.]]],
-        "σ" => 1.,
-        "β" => [[0., 0.]],
-        "nRep" => 5000,
-        "blupMethod" => [ranef],
-        "residualMethod" => [@onlyif("statsMethod"=="permutation",:shuffle),@onlyif("statsMethod"=="permutation",:signflip)],
-        "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
-        "nSubject" => [10,30],
-        "nItemsPerCondition" => [30],
-        "nPerm"=> 1000,
-    )
-end
+paramList = getParamList(task,f1,f2,f3,f4)
 
 ##---
 include(srcdir("sim_utilities.jl"))
@@ -171,21 +64,15 @@ nWorkers="slurm" # 10 for local job
 for dl = dict_list(paramList)
     println(dl)
     
-    dl_save =deepcopy(dl)
-    dl_save["f"]  = string(dl_save["f"].rhs)|>x->replace(x," "=>"") # rename formula
+    fName = dl_filename(dl)
 
-
-    if "residualMethod" ∈ keys(dl_save)
-        dl_save["residualMethod"]  = string(dl_save["residualMethod"])
-    end
-
-    fnName = datadir("cluster_task-$task", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
     if isfile(fnName)
         # don't calculate again
 	@show fnName
         continue
     end
 
+    # only necessary once
     simMod = sim_model(f4;convertDict(dl)...)
 
     t = @elapsed begin

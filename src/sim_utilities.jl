@@ -417,7 +417,7 @@ function expandgrid(df1, df2)
 end
 
 
-function getParamList(task)
+function getParamList(task,f1,f2,f3,f4)
     if task == 1
         paramList = Dict(
             "statsMethod" => "permutation",
