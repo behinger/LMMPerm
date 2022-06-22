@@ -67,14 +67,22 @@ function sim_model(f;simulationCoding=DummyCoding,kwargs...)
 
 end
 function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwargs...)
-    if nworkers() < n_workers
+    if n_workers == "slurm"
         # open as many as necessary
-        println("Starting Workers, this might take some time")
+        println("Starting Slurmm workers, this might take some time")
         addprocs(
-            SlurmClusterManager()
+            SlurmClusterManager(),
             exeflags = "--project",
-            #enable_threaded_blas = true,
+            #enable_threaded_blas = true, # not sure SlurmClusterManager supports this
         )
+    elseif nworkers() < n_workers
+            # open as many as necessary
+            println("Starting Slurmm workers, this might take some time")
+            addprocs(
+                n_workers = n_workers,
+                exeflags = "--project",
+                enable_threaded_blas = true,
+            )
     end
     
     # activate environment
