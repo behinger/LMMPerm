@@ -949,9 +949,11 @@ version = "4.6.4"
 
 [[deps.MixedModelsPermutations]]
 deps = ["BlockDiagonals", "LinearAlgebra", "MixedModels", "Random", "SparseArrays", "StaticArrays", "Statistics", "StatsBase", "StatsModels", "Tables"]
-git-tree-sha1 = "a08c290a3b4770866c25c732aad6b38d196a041e"
+git-tree-sha1 = "3f92303e66ee2dbc4d7b9e62d12d4d65dd25faa7"
+repo-rev = "main"
+repo-url = "https://github.com/palday/MixedModelsPermutations.jl.git"
 uuid = "647c4018-d7ef-4d03-a0cc-8889a722319e"
-version = "0.1.4"
+version = "0.2.0"
 
 [[deps.MixedModelsSim]]
 deps = ["LinearAlgebra", "MixedModels", "PooledArrays", "PrettyTables", "Random", "Statistics", "Tables"]
