@@ -153,7 +153,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
         df.test[df.test .== "default"] .= "β"
         df.test[df.test .== "default2"] .= "z"
     end
-    
+    println("exiting function")
     return df[df.pval .!= -1,:]
 
 end
@@ -541,7 +541,7 @@ function dl_filename(dl)
     end
 
     fnName = datadir("cluster_task-$task", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
-    return fnName
+    return fnName,dl_save
 end
 println("loaded sim_utilities")
 

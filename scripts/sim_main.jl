@@ -64,7 +64,7 @@ nWorkers=40#"slurm" # 10 for local job
 for dl = dict_list(paramList)
     println(dl)
     
-    fnName = dl_filename(dl)
+    fnName,dl_save = dl_filename(dl)
 
     if isfile(fnName)
         # don't calculate again
