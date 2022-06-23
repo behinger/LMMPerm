@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.4
+# v0.19.9
 
 using Markdown
 using InteractiveUtils
@@ -25,30 +25,73 @@ include("../src/sim_results.jl")
 # ╔═╡ a550b91e-e4f5-11ec-06fc-fdf5b4f3e284
 c = read_results!("../data/cluster_sim") 
 
-# ╔═╡ 09195539-af05-4fea-b271-e959d75e9ca1
-collect_results!
-
 # ╔═╡ 603b4523-e095-4f15-8819-e20476df1031
-unique(c.blupMethod)
+unique(c.σs_simple)
 
 # ╔═╡ ce2477dc-dc98-4f9b-ba9d-13d859050ac0
 let
 
 	d= data(c|>c->@rsubset(c,
-		#:f_simple == "1+a|s",
-		#:σs_simple == "1+1*a|s",
+		:f_simple == "1+a|s",
+		:σs_simple == "1+1*a|s",
 		:test != "β",
+		ismissing(:imbalance),
+		!ismissing(:errorDistribution),
 		#:nItemsPerCondition==30,
 		:β == [0.,0.],
 		:coefname == "condition: B",
-	)) * mapping(
+	)|>c->@rorderby(c,:nItemsPerCondition)) * mapping(
 		#(:statsMethod,:nItemsPerCondition)=>(x,y)->x*" | items: "*@sprintf("%02i",y),
 		:nItemsPerCondition,
 		:pval,
 		#marker=:nItemsPerCondition=>nonnumeric,#inflationMethod,
 		color = :nSubject=>nonnumeric,
 		col=:statsMethod,
-		row = :errorDistribution,
+		#row = (:errorDistribution,:imbalance)=>(x,y)->x*y,
+		row = :errorDistribution
+		#col = :
+		#row = :coefname,
+	)*(visual(Lines,alpha =0.5)+visual(Scatter))|>x->draw(x,legend=(position=:left,),axis=(xticklabelrotation=45.,))
+	[hlines!.(a.axis,[0.05],color=:red) for a in d.grid]
+
+	d
+end
+
+# ╔═╡ 49ff462f-6c3e-482d-9e88-d95dbf73626a
+c|>c->@rsubset(c,
+		:f_simple == "1+a|s",
+		:σs_simple == "1+1*a|s",
+		:test != "β",
+		#:errorDistribution != "skewed",
+		!ismissing(:errorDistribution),
+		:nItemsPerCondition==30,
+		:nSubject == 30,
+		:β == [0.,0.],
+		:coefname == "condition: B",
+	)
+
+# ╔═╡ 7101a4fc-1d77-4917-bee3-7dcd4d90bbeb
+let
+
+	d= data(c|>c->@rsubset(c,
+		:f_simple == "1+a|s",
+		:σs_simple == "1+1*a|s",
+		:test != "β",
+		#:errorDistribution != "skewed",
+		!ismissing(:errorDistribution),
+		:nItemsPerCondition==30,
+		:nSubject == 30,
+		:β == [0.,0.],
+		:coefname == "condition: B",
+	)) * mapping(
+		#(:statsMethod,:nItemsPerCondition)=>(x,y)->x*" | items: "*@sprintf("%02i",y),
+		:imbalance,
+		:pval,
+		marker=:residualMethod=>nonnumeric,#inflationMethod,
+		color = :side=>String,
+		col=:statsMethod,
+		#row = (:errorDistribution,:imbalance)=>(x,y)->x*y,
+		row = :errorDistribution
 		#col = :
 		#row = :coefname,
 	)*visual(Scatter)|>x->draw(x,legend=(position=:left,),axis=(xticklabelrotation=45.,))
@@ -56,6 +99,11 @@ let
 
 	d
 end
+
+# ╔═╡ f5e396e6-3716-46ff-ac4b-af6e017a96fa
+md"""
+## Runtime
+"""
 
 # ╔═╡ fcda0767-9bbf-4252-b057-df903cae234e
 let
@@ -84,6 +132,9 @@ let
 	
 	d
 end
+
+# ╔═╡ 22ad4853-ba8f-45d9-b146-577e66ce7dcf
+
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1363,10 +1414,13 @@ version = "3.5.0+0"
 # ╠═9d6548b5-cc21-473f-acd9-e5a4badd8ee4
 # ╠═0de4421e-a1cb-4b69-bb0e-ddf4588db365
 # ╠═a550b91e-e4f5-11ec-06fc-fdf5b4f3e284
-# ╠═09195539-af05-4fea-b271-e959d75e9ca1
 # ╠═603b4523-e095-4f15-8819-e20476df1031
 # ╠═ce2477dc-dc98-4f9b-ba9d-13d859050ac0
+# ╠═49ff462f-6c3e-482d-9e88-d95dbf73626a
+# ╠═7101a4fc-1d77-4917-bee3-7dcd4d90bbeb
+# ╟─f5e396e6-3716-46ff-ac4b-af6e017a96fa
 # ╠═fcda0767-9bbf-4252-b057-df903cae234e
+# ╠═22ad4853-ba8f-45d9-b146-577e66ce7dcf
 # ╠═2d18cc1e-f334-4fe0-b404-5ced1a9edaa6
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
