@@ -79,9 +79,12 @@ for dl = dict_list(paramList)
         res = run_test_distributed(nWorkers,simMod;convertDict(dl)...)
     end
     #@warn " \beta is actual res[1]!!"
+    println("saving")
     dl_save["results"] = res
     dl_save["runtime"] = t
+    @show fnName
     @tagsave(fnName, dl_save)
+    println("end of loop")
 end
 end
 
