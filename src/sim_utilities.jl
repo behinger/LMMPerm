@@ -531,7 +531,7 @@ function getParamList(task,f1,f2,f3,f4)
         return paramList
 end
 
-function dl_filename(dl)
+function dl_filename(dl,task)
     dl_save =deepcopy(dl)
     dl_save["f"]  = string(dl_save["f"].rhs)|>x->replace(x," "=>"") # rename formula
 
