@@ -79,12 +79,12 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
             # open as many as necessary
             println("Starting workers, this might take some time")
             addprocs(
-                n_workers,
+                n_workers - nworkers() + 1,
                 exeflags = "--project",
                 enable_threaded_blas = true,
             )
     end
-    
+    println("worker started")
     # activate environment
     eval(macroexpand(Distributed, quote
         @everywhere using Pkg
@@ -111,6 +111,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
     println("Note: If nothing is starting, this is likely due to an error which will just freeze everything. Test it locally!")
     # parallel loop
     #@showprogress 
+    
     @sync @distributed for k = 1:nRep
         println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
         res = run_test(MersenneTwister(5000+k), deepcopy(simMod);onesided=onesided,kwargs...)
@@ -132,6 +133,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
 
     end
 
+    println("workers finished")
     #unpack
     
     
