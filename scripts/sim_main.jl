@@ -60,7 +60,7 @@ res = run_test(MersenneTwister(1),simMod; convertDict(dl)...)
 include(srcdir("sim_utilities.jl"))
 
 @time begin
-nWorkers="slurm" # 10 for local job
+nWorkers=40#"slurm" # 10 for local job
 for dl = dict_list(paramList)
     println(dl)
     

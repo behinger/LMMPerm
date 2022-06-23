@@ -79,7 +79,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
             # open as many as necessary
             println("Starting workers, this might take some time")
             addprocs(
-                n_workers = n_workers,
+                n_workers,
                 exeflags = "--project",
                 enable_threaded_blas = true,
             )
