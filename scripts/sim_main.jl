@@ -1,7 +1,6 @@
 #!/home/st/st_us-051950/st_ac136984/julia-1.7.3/bin/julia
 #SBATCH --cpus-per-task 40
 #SBATCH --mem-per-cpu 1500
-#SBATCH --nodes 1
 #SBATCH -o slurmm/%x-%j.out
 #SBATCH --job-name=LMMPerm
 #SBATCH --time 40:0:0 
@@ -24,6 +23,7 @@ f4 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
 
 try
 	global task = Base.parse(Int, ENV["SLURM_ARRAY_TASK_ID"])
+        @show ENV["SLURM_ARRAY_TASK_COUNT"]
 catch KeyError
 
     global task = 5
