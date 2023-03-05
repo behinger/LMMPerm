@@ -44,9 +44,11 @@ function sim_model_getData(;nSubject=missing,nItemsPerCondition=missing,imbalanc
 
         
         end
-    else
+    elseif isnothing(imbalance) | ismissing(imbalance)
         # nothing to do here
         goodIx = 1:nrow(dat)
+    else
+        @error("did you misswrite trial/subject?")
     end
     dat = dat[goodIx,:]
     
