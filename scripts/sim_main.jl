@@ -1,12 +1,21 @@
-#!/home/st/st_us-051950/st_ac136984/julia-1.7.3/bin/julia
-#SBATCH --cpus-per-task 40
-#SBATCH --mem-per-cpu 1500
-#SBATCH -o slurmm/%x-%j.out
+#!/home/ac136984/.julia/juliaup/bin/julia
+#SBATCH --cpus-per-task 110
+#SBATCH --time=2-00:00:00           
+#SBATCH --nodes=1                   
+#SBATCH --ntasks-per-node=1
+#SBATCH --partition=cpu             
+
+#SBATCH --cpus-per-task=1
+#SBATCH -o slurm/%x-%j.out
 #SBATCH --job-name=LMMPerm
-#SBATCH --time 40:0:0 
 
 
 
+
+@show ENV["hostname"]
+@show ENV["SLURM_ARRAY_TASK_ID"]
+@show ENV["SLURM_JOB_ID"]
+@show ENV["SLURM_NTASKS"]
 
 using DrWatson
 quickactivate(pwd(),"LMMPerm")
@@ -60,7 +69,7 @@ res = run_test(MersenneTwister(1),simMod; convertDict(dl)...)
 include(srcdir("sim_utilities.jl"))
 
 @time begin
-nWorkers=40#"slurm" # 10 for local job
+nWorkers=120#"slurm" # 10 for local job
 for dl = dict_list(paramList)
     println(dl)
     
