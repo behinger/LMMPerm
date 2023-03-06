@@ -1,3 +1,4 @@
+using MixedModels: likelihoodratiotest
 using Distributed
 using MixedModelsSim, MixedModels,MixedModelsPermutations,StatsModels
 using ProgressMeter
@@ -8,6 +9,8 @@ using StatsBase
 using Distributions
 using SlurmClusterManager
 
+using JellyMe4
+using RCall
 
 function sim_model_getData(;nSubject=missing,nItemsPerCondition=missing,imbalance=nothing,kwargs...)
     subj_btwn = Dict("age" => ["O", "Y"])
@@ -116,7 +119,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
     
     @sync @distributed for k = 1:nRep
         println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
-        res = run_test(MersenneTwister(5000+k), deepcopy(simMod);onesided=onesided,kwargs...)
+        res = run_test(MersenneTwister(k), deepcopy(simMod);onesided=onesided,kwargs...)
         
 
 
@@ -210,7 +213,7 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
     return simMod_inst
 end
 
-function run_test(rng,simMod;statsMethod="permutation", kwargs...)
+function run_test(rng,simMod;statsMethod="permutation",kwargs...)
     
     simMod_instantiated = setup_simMod(rng,simMod;kwargs...)
     
@@ -222,6 +225,8 @@ function run_test(rng,simMod;statsMethod="permutation", kwargs...)
            run_fun=  run_waldsT
     elseif statsMethod == "pBoot"
             run_fun = run_pBoot
+    elseif statsMethod == "KenwardRoger"
+        run_fun = run_kr
     else
             error("not implemented")
     end
@@ -231,6 +236,38 @@ function run_test(rng,simMod;statsMethod="permutation", kwargs...)
     return res
     
 end
+
+
+function run_kr(rng,simMod_instantiated;onesided=false,kwargs...)
+    dat = sim_model_getData(;kwargs...)
+    # convert with JellyMe4
+    lme4_r = (simMod_instantiated,dat)
+    @rput lme4_r;
+    
+    R"""
+    lme4_r = as(lme4_r, "merModLmerTest")
+    sum_res = summary(lme4_r)$coefficients
+    rnames = rownames(sum_res)
+    """
+    @rget rnames
+    @rget sum_res
+    res = (;((Symbol(k)=>v) for (k,v) in zip(rnames,sum_res[:,5]))...)
+    if onesided
+
+        p_pos = sum_res[:,5]./2
+        p_neg = sum_res[:,5]./2
+
+        p_neg[sum_res[:,1].<0] .= 1
+        p_pos[sum_res[:,1].>0] .= 1
+        
+        res = (;(k=>[v neg pos] for (k,v,neg,pos) in zip(keys(res),values(res),p_neg,p_pos))...)
+
+    end
+    return res
+end
+
+
+
 function run_pBoot(rng,simMod_instantiated;nBoot = 1000,onesided=false,kwargs...)
     bootRes = parametricbootstrap(rng,nBoot,simMod_instantiated) # bootstrap
     covRes = DataFrame(shortestcovint(bootRes)) # get 95 convint 
@@ -269,10 +306,30 @@ function run_waldsT(rng,simMod_instantiated;onesided=false,kwargs...)
     return  res # we can report two p-vals, might be changed
 end
 
-function run_LRT(rng,simMod_instantiated;onesided=false,kwargs...)
-    error("not implemented")
-    simMod_instantiated
+function run_LRT(rng,simMod_instantiated;onesided=false,analysisCoding=DummyCoding,kwargs...)
+    
+    # we have to simplify the formula by removing the  condition effect from the formula
+    f = deepcopy(simMod_instantiated.formula)
+    f_fixef = f.rhs[1]
+    @assert coefnames(f_fixef.terms[2]) == ["condition: B"]
+    @assert length(f_fixef.terms) ==2
 
+    f_reduced = FormulaTerm(f.lhs,(MatrixTerm(f_fixef.terms[1]),f.rhs[2]))
+    
+    dat = sim_model_getData(;kwargs...)
+    #dat = sim_model_getData(;convertDict(dl)...)
+    dat.dv .= simMod_instantiated.y
+
+    simMod_reduced = LinearMixedModel(f_reduced, dat; contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
+    simMod_reduced.optsum.maxtime = 0.5 # restrict per-iteration fitting time
+    simMod_reduced.optsum.maxfeval = 10000
+
+    fit!(simMod_reduced)
+
+    res = MixedModels.likelihoodratiotest(simMod_reduced,simMod_instantiated)
+    return (;Symbol("condition: B")=>res.pvalues[1])
+
+    
 end
 
 function run_permutationtest(rng,simMod_instantiated;nPerm=missing,residualMethod=missing,blupMethod=missing,  inflationMethod=missing,residuals=residuals,onesided=false,kwargs...)
@@ -440,9 +497,9 @@ function getParamList(task,f1,f2,f3,f4)
             "inflationMethod" => [MixedModelsPermutations.inflation_factor,"noScaling"],
             "residualMethod" => [:signflip,:shuffle],#[:signflip,:shuffle],"
             "nRep" => 5000,
+            "nPerm"=> 1000,
             "nSubject" => [30],
             "nItemsPerCondition" => [30],
-            "nPerm"=> 1000,
             
         )
         elseif task == 2
@@ -472,7 +529,7 @@ function getParamList(task,f1,f2,f3,f4)
         #----
         # Power calculations
         paramList = Dict(
-            "statsMethod" => ["waldsT","pBoot","permutation"], # if this is "missing" we run permutation for backward compatibility
+            "statsMethod" => ["waldsT","pBoot","permutation","LRT","KenwardRoger"], # if this is "missing" we run permutation for backward compatibility
             "errorDistribution" => ["normal"],#"tdist"],
             "f" => [f3],
             "σs" => [[[1., 1.],[0.,0.]]],
