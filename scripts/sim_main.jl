@@ -12,7 +12,6 @@
 
 
 
-@show ENV["hostname"]
 @show ENV["SLURM_ARRAY_TASK_ID"]
 @show ENV["SLURM_JOB_ID"]
 @show ENV["SLURM_NTASKS"]
