@@ -40,15 +40,17 @@ include(srcdir("sim_utilities.jl"))
 
 dl = dict_list(paramList)[1]
 dl["imbalance"] = "trial"
-dl["statsMethod"] = "pBoot"
-#dl["nPerm"] = 10
+dl["statsMethod"] = "permutation"
+dl["nPerm"] = 100
 #dl["nSubject"] = 30
 #dl["nItemsPerCondition"] = 50
 #dl["σ"] = 0.01
 #dl["f"] = f1
+dl["residualMethod"] = :shuffle
+dl["inflationMethod"] = MixedModelsPermutations.inflation_factor
 #dl["σs"] = [[0.,0.]]#,[0.,0.]]
 simMod = sim_model(f4;convertDict(dl)...)
-res = run_test(MersenneTwister(1),simMod; convertDict(dl)...)
+res = run_test(MersenneTwister(2),simMod; onesided=true,convertDict(dl)...)
 
 #x = map(x->run_test(MersenneTwister(x),simMod; convertDict(dl)...),1:100)
 #mean([y[2]<0.05 for y in x])
