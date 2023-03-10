@@ -11,11 +11,12 @@
 
 
 
-
+try
 @show ENV["SLURM_ARRAY_TASK_ID"]
 @show ENV["SLURM_JOB_ID"]
 @show ENV["SLURM_NTASKS"]
-
+catch KeyError
+end
 using DrWatson
 quickactivate(pwd(),"LMMPerm")
 
@@ -46,16 +47,16 @@ include(srcdir("sim_utilities.jl"))
 
 
 
-dl = dict_list(paramList)[1]
-dl["imbalance"] = "trial"
-dl["statsMethod"] = "permutation"
-dl["nPerm"] = 100
+dl = dict_list(paramList)[2]
+#dl["imbalance"] = "trial"
+#dl["statsMethod"] = "permutation"
+#dl["nPerm"] = 100
 #dl["nSubject"] = 30
 #dl["nItemsPerCondition"] = 50
 #dl["σ"] = 0.01
 #dl["f"] = f1
-dl["residualMethod"] = :shuffle
-dl["inflationMethod"] = MixedModelsPermutations.inflation_factor
+#dl["residualMethod"] = :shuffle
+#dl["inflationMethod"] = MixedModelsPermutations.inflation_factor
 #dl["σs"] = [[0.,0.]]#,[0.,0.]]
 simMod = sim_model(f4;convertDict(dl)...)
 res = run_test(MersenneTwister(2),simMod; onesided=true,convertDict(dl)...)
