@@ -35,7 +35,7 @@ try
         @show ENV["SLURM_ARRAY_TASK_COUNT"]
 catch KeyError
 
-    global task = 5
+    global task = 3
 
 end
 @show task
@@ -49,7 +49,7 @@ include(srcdir("sim_utilities.jl"))
 
 dl = dict_list(paramList)[2]
 #dl["imbalance"] = "trial"
-#dl["statsMethod"] = "permutation"
+#dl["statsMethod"] = "KenwardRoger"
 #dl["nPerm"] = 100
 #dl["nSubject"] = 30
 #dl["nItemsPerCondition"] = 50
@@ -60,6 +60,8 @@ dl = dict_list(paramList)[2]
 #dl["σs"] = [[0.,0.]]#,[0.,0.]]
 simMod = sim_model(f4;convertDict(dl)...)
 res = run_test(MersenneTwister(2),simMod; onesided=true,convertDict(dl)...)
+
+
 
 #x = map(x->run_test(MersenneTwister(x),simMod; convertDict(dl)...),1:100)
 #mean([y[2]<0.05 for y in x])

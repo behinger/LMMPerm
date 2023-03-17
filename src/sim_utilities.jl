@@ -8,6 +8,7 @@ using DataFrames
 using StatsBase
 using Distributions
 using SlurmClusterManager
+using Logging
 
 using JellyMe4
 using RCall
@@ -109,8 +110,8 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
     statResult1 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1)) # if onesided testing is activated, we get twosided + two onesided results
     statResult2 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1))
     @everywhere @quickactivate "LMMPerm"
-    @everywhere include(srcdir("sim_utilities.jl"))
-    @everywhere include(srcdir("permutationtest_be.jl"))
+    @everywhere include(srcdir("sim_utilities.jl");)
+    @everywhere include(srcdir("permutationtest_be.jl");)
     
     println("starting @distributed")
     println("Note: If nothing is starting, this is likely due to an error which will just freeze everything. Test it locally!")
@@ -118,7 +119,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
     #@showprogress 
     
     @sync @distributed for k = 1:nRep
-        println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
+        #println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
         res = run_test(MersenneTwister(k), deepcopy(simMod);onesided=onesided,kwargs...)
         
 
@@ -242,13 +243,16 @@ function run_kr(rng,simMod_instantiated;onesided=false,kwargs...)
     dat = sim_model_getData(;kwargs...)
     # convert with JellyMe4
     lme4_r = (simMod_instantiated,dat)
-    @rput lme4_r;
     
-    R"""
-    lme4_r = as(lme4_r, "merModLmerTest")
-    sum_res = summary(lme4_r)$coefficients
-    rnames = rownames(sum_res)
-    """
+    with_logger(NullLogger()) do
+        @rput lme4_r;
+        R"""
+        library(lmerTest)
+        lme4_r = as(lme4_r, "merModLmerTest")
+        sum_res = summary(lme4_r)$coefficients
+        rnames = rownames(sum_res)
+        """
+    end
     @rget rnames
     @rget sum_res
     res = (;((Symbol(k)=>v) for (k,v) in zip(rnames,sum_res[:,5]))...)
@@ -327,7 +331,7 @@ function run_LRT(rng,simMod_instantiated;onesided=false,analysisCoding=DummyCodi
     fit!(simMod_reduced)
 
     res = MixedModels.likelihoodratiotest(simMod_reduced,simMod_instantiated)
-    return (;Symbol("condition: B")=>res.pvalues[1])
+    return (;Symbol("(Intercept)")=>NaN,Symbol("condition: B")=>res.pvalues[1])
 
     
 end
