@@ -15,10 +15,10 @@ try
         @show ENV["SLURM_ARRAY_TASK_ID"]
         @show ENV["SLURM_JOB_ID"]
         @show ENV["SLURM_NTASKS"]
-        scrum = true
+        global scrum = true
 catch KeyError
     global task = 3
-    scrum = false
+    global scrum = false
 end
 using DrWatson
 quickactivate(pwd(),"LMMPerm")
