@@ -252,13 +252,15 @@ function run_kr(rng,simMod_instantiated;onesided=false,kwargs...)
         @rput lme4_r;
         R"""
         library(lmerTest)
-        lme4_r = as(lme4_r, "merModLmerTest")
+        lme4_r = as(lme4_r, "lmerModLmerTest")
         sum_res = summary(lme4_r)$coefficients
         rnames = rownames(sum_res)
         """
     end
     @rget rnames
     @rget sum_res
+
+    rnames[rnames.=="conditionB"] .= "condition: B"
     res = (;((Symbol(k)=>v) for (k,v) in zip(rnames,sum_res[:,5]))...)
     if onesided
 
@@ -271,6 +273,8 @@ function run_kr(rng,simMod_instantiated;onesided=false,kwargs...)
         res = (;(k=>[v neg pos] for (k,v,neg,pos) in zip(keys(res),values(res),p_neg,p_pos))...)
 
     end
+    
+    @show res
     return res
 end
 
@@ -540,7 +544,7 @@ function getParamList(task,f1,f2,f3,f4)
         #----
         # Power calculations
         paramList = Dict(
-            "statsMethod" => ["waldsT","pBoot","permutation","LRT"], # if this is "missing" we run permutation for backward compatibility
+            "statsMethod" => ["waldsT","pBoot","permutation","LRT","KenwardRoger"], # if this is "missing" we run permutation for backward compatibility
             "f" => [f3],
             "β" => [[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]]        
         )
@@ -550,7 +554,7 @@ function getParamList(task,f1,f2,f3,f4)
         #-----
         # Varying N
         paramList = Dict(
-            "statsMethod" => ["waldsT","pBoot","permutation","LRT"], # if this is "missing" we run permutation for backward compatibility
+            "statsMethod" => ["waldsT","pBoot","permutation","LRT","KenwardRoger"], # if this is "missing" we run permutation for backward compatibility
             "errorDistribution" => ["normal","tdist","skewed"],
             "β" => [[0., 0.],[0., 0.3]],
             
@@ -564,7 +568,7 @@ function getParamList(task,f1,f2,f3,f4)
             #-----
             # Errordistributions + balancing
             paramList = Dict(
-                "statsMethod" => ["waldsT","pBoot","permutation","LRT"], # if this is "missing" we run permutation for backward compatibility
+                "statsMethod" => ["waldsT","pBoot","permutation","LRT","KenwardRoger"], # if this is "missing" we run permutation for backward compatibility
                 "errorDistribution" => ["normal","tdist","skewed"],
                 "imbalance" => ["subject","trial"],
                 "σs" => [[[1., 1.],[0.,0.]]],
@@ -587,7 +591,3 @@ function dl_filename(dl)
     fnName = datadir("cluster", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
     return fnName,dl_save
 end
-println("loaded sim_utilities")
-
-
-

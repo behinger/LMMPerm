@@ -1,5 +1,5 @@
 #!/home/ac136984/.julia/juliaup/bin/julia
-#SBATCH --cpus-per-task 110
+#SBATCH --cpus-per-task 125
 #SBATCH --time=2-00:00:00           
 #SBATCH --nodes=1                   
 #SBATCH --ntasks-per-node=1
@@ -15,8 +15,10 @@ try
         @show ENV["SLURM_ARRAY_TASK_ID"]
         @show ENV["SLURM_JOB_ID"]
         @show ENV["SLURM_NTASKS"]
+        scrum = true
 catch KeyError
     global task = 3
+    scrum = false
 end
 using DrWatson
 quickactivate(pwd(),"LMMPerm")
@@ -37,7 +39,7 @@ paramList = getParamList(task,f1,f2,f3,f4)
 ##---
 if 1 == 0
 ##---
-dl = dict_list(paramList)[3]
+dl = dict_list(paramList)[5]
 #dl["imbalance"] = "trial"
 #dl["statsMethod"] = "KenwardRoger"
 #dl["nPerm"] = 100
@@ -70,7 +72,7 @@ end
 include(srcdir("sim_utilities.jl"))
 
 @time begin
-nWorkers=120#"slurm" # 10 for local job
+nWorkers= scrum ? 125 else 5#"slurm" # 10 for local job
 for dl = dict_list(paramList)
     println(dl)
     
