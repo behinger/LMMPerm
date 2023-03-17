@@ -3,58 +3,48 @@
 #SBATCH --time=2-00:00:00           
 #SBATCH --nodes=1                   
 #SBATCH --ntasks-per-node=1
-#SBATCH --partition=cpu             
-
+#SBATCH --partition=cpu,cpu-long         
 #SBATCH --cpus-per-task=1
 #SBATCH -o slurm/%x-%j.out
 #SBATCH --job-name=LMMPerm
 
 
-
 try
-@show ENV["SLURM_ARRAY_TASK_ID"]
-@show ENV["SLURM_JOB_ID"]
-@show ENV["SLURM_NTASKS"]
+	global task = Base.parse(Int, ENV["SLURM_ARRAY_TASK_ID"]) # global to access outside of try/catch
+        @show ENV["SLURM_ARRAY_TASK_COUNT"]
+        @show ENV["SLURM_ARRAY_TASK_ID"]
+        @show ENV["SLURM_JOB_ID"]
+        @show ENV["SLURM_NTASKS"]
 catch KeyError
+    global task = 3
 end
 using DrWatson
 quickactivate(pwd(),"LMMPerm")
 
-using Random,TimerOutputs
-include(srcdir("sim_utilities.jl"))
-include(srcdir("permutationtest_be.jl"))
+using Revise,Random,TimerOutputs
+includet(srcdir("sim_utilities.jl"))
+#include(srcdir("permutationtest_be.jl"))
 
-convertDict = x-> [Symbol(d.first) => d.second for d in x]
+
 f1 =  @formula(dv ~ 1 + condition  + (1|subj))
 f2 =  @formula(dv ~ 1 + condition  + zerocorr(1+condition|subj))
 f3 =  @formula(dv ~ 1 + condition  + (1+condition|subj))
 f4 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
 
-try
-	global task = Base.parse(Int, ENV["SLURM_ARRAY_TASK_ID"])
-        @show ENV["SLURM_ARRAY_TASK_COUNT"]
-catch KeyError
-
-    global task = 3
-
-end
 @show task
 #---h0 tests
 paramList = getParamList(task,f1,f2,f3,f4)
-
 ##---
-include(srcdir("sim_utilities.jl"))
-
-
-
-dl = dict_list(paramList)[2]
+if 1 == 0
+##---
+dl = dict_list(paramList)[3]
 #dl["imbalance"] = "trial"
 #dl["statsMethod"] = "KenwardRoger"
 #dl["nPerm"] = 100
 #dl["nSubject"] = 30
 #dl["nItemsPerCondition"] = 50
 #dl["σ"] = 0.01
-#dl["f"] = f1
+dl["f"] = f2
 #dl["residualMethod"] = :shuffle
 #dl["inflationMethod"] = MixedModelsPermutations.inflation_factor
 #dl["σs"] = [[0.,0.]]#,[0.,0.]]
@@ -62,11 +52,18 @@ simMod = sim_model(f4;convertDict(dl)...)
 res = run_test(MersenneTwister(2),simMod; onesided=true,convertDict(dl)...)
 
 
+##--
 
-#x = map(x->run_test(MersenneTwister(x),simMod; convertDict(dl)...),1:100)
-#mean([y[2]<0.05 for y in x])
+loopKey = "statsMethod"
 
+for (k,v) = enumerate(paramList[loopKey])
+    p = deepcopy(dl)
+    p[loopKey] = v
+    @show v
+    @time run_test(MersenneTwister(2),simMod; onesided=true,convertDict(p)...)
+end
 
+end
 
 
 ##---
@@ -77,14 +74,18 @@ nWorkers=120#"slurm" # 10 for local job
 for dl = dict_list(paramList)
     println(dl)
     
-    fnName,dl_save = dl_filename(dl,task)
+    fnName,dl_save = dl_filename(dl)
 
     if isfile(fnName)
         # don't calculate again
-	@show fnName
+        println("!!!! already finished: "* fnName)
+        continue
+    elseif  isfile(fnName*"_inprogress")
+        println("!!!! already running: "* fnName)
         continue
     end
-
+    touch(fnName*"_inprogress")
+    
     # only necessary once
     simMod = sim_model(f4;convertDict(dl)...)
 
@@ -98,6 +99,8 @@ for dl = dict_list(paramList)
     @show fnName
     @tagsave(fnName, dl_save)
     println("end of loop")
+    rm(fnName*"_inprogress")
+
 end
 end
 
