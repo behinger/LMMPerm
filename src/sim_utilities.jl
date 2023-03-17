@@ -540,7 +540,7 @@ function getParamList(task,f1,f2,f3,f4)
         #----
         # Power calculations
         paramList = Dict(
-            "statsMethod" => ["waldsT","pBoot","permutation","LRT","KenwardRoger"], # if this is "missing" we run permutation for backward compatibility
+            "statsMethod" => ["waldsT","pBoot","permutation","LRT"], # if this is "missing" we run permutation for backward compatibility
             "f" => [f3],
             "β" => [[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]]        
         )
@@ -550,7 +550,7 @@ function getParamList(task,f1,f2,f3,f4)
         #-----
         # Varying N
         paramList = Dict(
-            "statsMethod" => ["waldsT","pBoot","permutation","LRT","KenwardRoger"], # if this is "missing" we run permutation for backward compatibility
+            "statsMethod" => ["waldsT","pBoot","permutation","LRT"], # if this is "missing" we run permutation for backward compatibility
             "errorDistribution" => ["normal","tdist","skewed"],
             "β" => [[0., 0.],[0., 0.3]],
             
@@ -564,7 +564,7 @@ function getParamList(task,f1,f2,f3,f4)
             #-----
             # Errordistributions + balancing
             paramList = Dict(
-                "statsMethod" => ["waldsT","pBoot","permutation","LRT","KenwardRoger"], # if this is "missing" we run permutation for backward compatibility
+                "statsMethod" => ["waldsT","pBoot","permutation","LRT"], # if this is "missing" we run permutation for backward compatibility
                 "errorDistribution" => ["normal","tdist","skewed"],
                 "imbalance" => ["subject","trial"],
                 "σs" => [[[1., 1.],[0.,0.]]],
