@@ -10,6 +10,8 @@ using Distributions
 using SlurmClusterManager
 using Logging
 
+ENV["LMER"] = "lmerTest::lmer"
+ENV["LMER"] = "afex::lmer_alt"
 using JellyMe4
 using RCall
 
