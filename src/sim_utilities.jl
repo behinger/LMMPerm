@@ -246,14 +246,15 @@ end
 function run_kr(rng,simMod_instantiated;onesided=false,kwargs...)
     dat = sim_model_getData(;kwargs...)
     # convert with JellyMe4
+    refit!(simMod_instantiated;REML=true) # needed for KenwardRoger
     lme4_r = (simMod_instantiated,dat)
     
     with_logger(NullLogger()) do
         @rput lme4_r;
         R"""
         library(lmerTest)
-        lme4_r = as(lme4_r, "lmerModLmerTest")
-        sum_res = summary(lme4_r)$coefficients
+        #lme4_r = as(lme4_r, "merModLmerTest") # not necessary due to global ENV variable
+        sum_res = summary(lme4_r,ddf='Kenward-Roger')$coefficients
         rnames = rownames(sum_res)
         """
     end

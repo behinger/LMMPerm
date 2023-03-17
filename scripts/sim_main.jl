@@ -72,7 +72,7 @@ end
 include(srcdir("sim_utilities.jl"))
 
 @time begin
-nWorkers= scrum ? 125 else 5#"slurm" # 10 for local job
+nWorkers= scrum ? 125 : 5#"slurm" # 10 for local job
 for dl = dict_list(paramList)
     println(dl)
     
