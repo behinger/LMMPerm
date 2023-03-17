@@ -516,7 +516,7 @@ function getParamList(task,f1,f2,f3,f4)
             "σ" => 1.,
             "β" => [[0., 0.],[0., 0.1],[0., 1.]],
             "blupMethod" => [ranef,@onlyif("f"!=f4,olsranef)],
-            "inflationMethod" => [MixedModelsPermutations.inflation_factor,"noScaling"],
+            "inflationMethod" => [MixedModelsPermutations.inflation_factor],
             "residualMethod" => [:shuffle],#[:signflip,:shuffle],"
             "nRep" => 5000,
             "nPerm"=> 1000,
@@ -535,9 +535,9 @@ function getParamList(task,f1,f2,f3,f4)
             "σs" => [[[1., 1.],[0.,0.]]],
             "σ" => 1.,
             "β" => [[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]],
-            "nRep" => 5000,
+            "nRep" => 10000,
             "blupMethod" => [@onlyif("statsMethod"=="permutation",ranef),
-                             @onlyif("statsMethod"=="permutation",olsranef)],
+                             ],#@onlyif("statsMethod"=="permutation",olsranef)],
             "residualMethod" => [@onlyif("statsMethod"=="permutation",:shuffle)],#[:signflip,:shuffle],"
             "inflationMethod" => [@onlyif("statsMethod" == "permutation",MixedModelsPermutations.inflation_factor)],
             "nSubject" => [30],
