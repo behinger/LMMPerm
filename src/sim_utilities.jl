@@ -16,6 +16,7 @@ using JellyMe4
 using RCall
 
 include("sim_parameters.jl")
+include(srcdir("permutationtest_be.jl"))
 convertDict = x-> [Symbol(d.first) => d.second for d in x]
 
 function sim_model_getData(;nSubject=missing,nItemsPerCondition=missing,imbalance=nothing,kwargs...)

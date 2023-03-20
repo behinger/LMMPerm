@@ -17,7 +17,7 @@ try
         @show ENV["SLURM_NTASKS"]
         global scrum = true
 catch KeyError
-    global task = 3
+    global task = 1
     global scrum = false
 end
 using DrWatson
@@ -32,21 +32,25 @@ includet(srcdir("sim_parameters.jl"))
 
 @show task
 #---h0 tests
-paramList = getParamList(task)
+paramList = getParamList.(1:5)
+dl_all = vcat(dict_list.(paramList)...)
+
+f1,f2,f3,f4 = defaultFormulas()
+
 ##---
 if 1 == 0
     # local testing area :)
 ##---
-f1,f2,f3,f4 = defaultFormulas()
+paramList = getParamList(1)
 
-dl = dict_list(paramList)[5]
+dl = dict_list(paramList)[111]
 #dl["imbalance"] = "trial"
 #dl["statsMethod"] = "KenwardRoger"
 #dl["nPerm"] = 100
 #dl["nSubject"] = 30
 #dl["nItemsPerCondition"] = 50
 #dl["σ"] = 0.01
-dl["f"] = f2
+#dl["f"] = f2
 #dl["residualMethod"] = :shuffle
 #dl["inflationMethod"] = MixedModelsPermutations.inflation_factor
 #dl["σs"] = [[0.,0.]]#,[0.,0.]]
@@ -73,7 +77,9 @@ include(srcdir("sim_utilities.jl"))
 
 @time begin
 nWorkers= scrum ? 125 : 5#"slurm" # 10 for local job
-for dl = dict_list(paramList)
+
+# permute the dl_all with random seed the task/batch-id - this might reduce racing conditions that two jobs work on the same task.
+for dl = dl_all[randperm(MersenneTwister(task),length(dl_all))]
     println(dl)
     
     fnName,dl_save = dl_filename(dl)
