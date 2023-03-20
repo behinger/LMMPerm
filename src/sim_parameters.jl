@@ -29,6 +29,7 @@ function defaultParameters()
     )
 end
 function getParamList(task)
+    f1,f2,f3,f4 = defaultFormulas()
 
    default = defaultParameters()
     if task == 1
