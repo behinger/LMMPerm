@@ -36,11 +36,13 @@ c = flatten(c,[:coefname,:test,:pval,:side])[:,Not([:p,:results])]
 	c.pval[c.statsMethod .== "pBoot"] = 1 .-c.pval[c.statsMethod .== "pBoot"]
 
 	# rename formulas
-	@transform!(c,@byrow :f_simple = simpleFormula(:f),:f_simple=>categorical(:f_simple,levels=["1|s","1+a||s","1+a|s","1+a|s + 1+a|i"]))
+	@rtransform!(c, :f_simple = simpleFormula(:f))
+	@transform!(c,:f_simple = categorical(:f_simple,levels=["1|s","1+a||s","1+a|s","1+a|s + 1+a|i"]))
 
 
 	# rename σs
-	@transform!(c,@byrow :σs_simple = simpleσs(:σs)	,:σs_simple=categorical(:σs_simple,levels=["1|s","1+1*a|s","4+1*a|s","1+4*a|s","1+1*a|s+1|i","1+1*a|s+1+1*a|i","1+1*a|s+1+4*a|i"]))
+	@rtransform!(c,:σs_simple = simpleσs(:σs))
+	@transform!(c,:σs_simple=categorical(:σs_simple,levels=["1|s","1+1*a|s","4+1*a|s","1+4*a|s","1+1*a|s+1|i","1+1*a|s+1+1*a|i","1+1*a|s+1+4*a|i"]))
 
 
 	# replace weird JLD names

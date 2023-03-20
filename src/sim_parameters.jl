@@ -51,6 +51,7 @@ function getParamList(task)
         elseif task == 2
         #----
         # H1 test
+        # test some special cases of \sigmas / f1 
         paramList = Dict(
             "f" => [f1,f3,f4],
             "σs" => [@onlyif("f"== f1, [[1., 0.], [0.,0.]]),
@@ -58,7 +59,7 @@ function getParamList(task)
                      @onlyif("f"== f3, [[1., 4.], [0.,0.]]),
                      @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
                      ],
-            "β" => [[0., 0.],[0., 0.1],[0., 1.]],
+            "β" =>[[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]],
         )
         
         elseif task == 3

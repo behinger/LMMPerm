@@ -504,6 +504,7 @@ function dl_filename(dl)
         dl_save["residualMethod"]  = string(dl_save["residualMethod"])
     end
 
-    fnName = datadir("cluster", savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,)))
+    fnName = datadir("cluster", string(hash(savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,))))*".jld2")
+
     return fnName,dl_save
 end
