@@ -1,4 +1,5 @@
 using DataFramesMeta
+#using CategorialArrays
 
 function read_results(folder)
     c = collect_results(folder);
@@ -35,16 +36,14 @@ c = flatten(c,[:coefname,:test,:pval,:side])[:,Not([:p,:results])]
 	c.pval[c.statsMethod .== "pBoot"] = 1 .-c.pval[c.statsMethod .== "pBoot"]
 
 	# rename formulas
-	@transform!(c,@byrow :f_simple = simpleFormula(:f))
+	@transform!(c,@byrow :f_simple = simpleFormula(:f),:f_simple=>categorical(:f_simple,levels=["1|s","1+a||s","1+a|s","1+a|s + 1+a|i"]))
 
 
 	# rename σs
-	@transform!(c,@byrow :σs_simple = simpleσs(:σs)	)
+	@transform!(c,@byrow :σs_simple = simpleσs(:σs)	,:σs_simple=categorical(:σs_simple,levels=["1|s","1+1*a|s","4+1*a|s","1+4*a|s","1+1*a|s+1|i","1+1*a|s+1+1*a|i","1+1*a|s+1+4*a|i"]))
 
 
 	# replace weird JLD names
-	
-
 	jldreplace = x->replace(string(x),
 	"JLD2.ReconstructedTypes"=>"",
 	"##"=>"",
@@ -81,6 +80,7 @@ return σs == [[1., 0],[0., 0]] ? "1|s" :
 σs == [[1., 1],[1., 4]] ? "1+1*a|s+1+4*a|i" : 
 σs == [[1., 1],[1., 1]] ? "1+1*a|s+1+1*a|i" : 
 σs == [[1., 4],[0., 0]] ? "1+4*a|s" : "undefined"
+
 end
 
 function simpleDefaultParameters()
@@ -101,7 +101,7 @@ function subselectDF(a;skip=[],def = simpleDefaultParameters(),debug=false)
 	def.test .= "β"
 	def.side .=:twosided
 
-	skipAll = hcat(skip...,["σs","f"]...)
+	skipAll = hcat(skip...,["test","σs","f"]...)
 	debug ? @show(skipAll) : ""
 	onstring = setdiff(names(def),skipAll)
 
@@ -119,5 +119,11 @@ function subselectDF(a;skip=[],def = simpleDefaultParameters(),debug=false)
 
 debug ? @show(sum(ix)) : ""
 	
-	return select(a[ix,:],Not(:f))
+	a =  select(a[ix,:],Not(:f))
+	if !("test" ∈ onstring)
+		# 
+		@rsubset!(a,:test !== "z")
+	end
+	a =  @transform(a,@byrow :pval=((:pval>0.1) ? 0.1 : :pval))	
+	return a
 end

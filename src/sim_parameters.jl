@@ -65,7 +65,6 @@ function getParamList(task)
         # Power calculations
         paramList = Dict(
             "statsMethod" => ["waldsT","pBoot","permutation","LRT","KenwardRoger"], # if this is "missing" we run permutation for backward compatibility
-            "f" => [f3],
             "β" => [[0., 0.],[0., 0.1],[0., 0.2],[0., .3],[0., 0.5]]        
         )
         
