@@ -25,20 +25,20 @@ quickactivate(pwd(),"LMMPerm")
 
 using Revise,Random,TimerOutputs
 includet(srcdir("sim_utilities.jl"))
+includet(srcdir("sim_parameters.jl"))
 #include(srcdir("permutationtest_be.jl"))
 
 
-f1 =  @formula(dv ~ 1 + condition  + (1|subj))
-f2 =  @formula(dv ~ 1 + condition  + zerocorr(1+condition|subj))
-f3 =  @formula(dv ~ 1 + condition  + (1+condition|subj))
-f4 =  @formula(dv ~ 1 + condition  + (1+condition|subj) + (1+condition|item))
 
 @show task
 #---h0 tests
-paramList = getParamList(task,f1,f2,f3,f4)
+paramList = getParamList(task)
 ##---
 if 1 == 0
+    # local testing area :)
 ##---
+f1,f2,f3,f4 = defaultFormulas()
+
 dl = dict_list(paramList)[5]
 #dl["imbalance"] = "trial"
 #dl["statsMethod"] = "KenwardRoger"
