@@ -44,7 +44,7 @@ function getParamList(task)
                      @onlyif("f"== f4, [[1., 1.], [1., 1.]]),
                      @onlyif("f"== f4, [[1., 1.], [1., 4.]])],
 
-            "blupMethod" => [ranef,olsranef],
+            "blupMethod" => [ranef,@onlyif("f"!= f4,olsranef)],
             "inflationMethod" => [MixedModelsPermutations.inflation_factor,"noScaling"],
             "residualMethod" => [:signflip,:shuffle],            
         )
@@ -81,7 +81,7 @@ function getParamList(task)
             
             "blupMethod" => [@onlyif("statsMethod"=="permutation",ranef),
                              @onlyif("statsMethod"=="permutation",olsranef)],
-            "nSubject" => [4,10,30],
+            "nSubject" => [4,10,30],    
             "nItemsPerCondition" => [2,10,30,50],
         )
         
