@@ -1,6 +1,6 @@
 #!/home/ac136984/.julia/juliaup/bin/julia
-#SBATCH --cpus-per-task 125
-#SBATCH --time=2-00:00:00           
+#SBATCH --cpus-per-task 120
+#SBATCH --time=2-00:00:00         
 #SBATCH --nodes=1                   
 #SBATCH --ntasks-per-node=1
 #SBATCH --partition=cpu,cpu-long         
@@ -76,7 +76,7 @@ end
 include(srcdir("sim_utilities.jl"))
 
 @time begin
-nWorkers= scrum ? 125 : 5#"slurm" # 10 for local job
+nWorkers= scrum ? 80 : 5#"slurm" # 10 for local job
 
 # permute the dl_all with random seed the task/batch-id - this might reduce racing conditions that two jobs work on the same task.
 for dl = dl_all[randperm(MersenneTwister(task),length(dl_all))]
