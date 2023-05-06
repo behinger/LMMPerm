@@ -249,8 +249,8 @@ function run_kr(rng,simMod_instantiated;onesided=false,kwargs...)
     dat = sim_model_getData(;kwargs...)
     # convert with JellyMe4
     refit!(simMod_instantiated;REML=true) # needed for KenwardRoger
+    dat.dv = simMod_instantiated.y
     lme4_r = (simMod_instantiated,dat)
-    
     with_logger(NullLogger()) do
         @rput lme4_r;
         R"""
