@@ -97,16 +97,16 @@ function simpleDefaultParameters()
 end
 
 
-function subselectDF(a;skip=[],def = simpleDefaultParameters(),debug=false)
+function subselectDF(a;skip=[],def = simpleDefaultParameters(),debug=false,clip=0.1)
 	def = deepcopy(def)
 	def.coefname .="condition: B"
-	def.test .= "β"
+	def.test .= "z"
 	def.side .=:twosided
 
 	skipAll = hcat(skip...,["test","σs","f"]...)
 	debug ? @show(skipAll) : ""
 	onstring = setdiff(names(def),skipAll)
-
+	
 	#ix = Vector{Bool}(true,nrow(c))
 	ix = fill(true,nrow(a))
 	
@@ -122,10 +122,12 @@ function subselectDF(a;skip=[],def = simpleDefaultParameters(),debug=false)
 debug ? @show(sum(ix)) : ""
 	
 	a =  select(a[ix,:],Not(:f))
-	if !("test" ∈ onstring)
-		# 
-		@rsubset!(a,:test !== "z")
+
+	@show unique(a.test)
+	if !("test" ∈ skip)
+		@rsubset!(a,:test !== "β")
 	end
-	a =  @transform(a,@byrow :pval=((:pval>0.1) ? 0.1 : :pval))	
+	@show unique(a.test)
+	a =  @transform(a,@byrow :pval=((:pval>clip) ? clip : :pval))	
 	return a
 end
