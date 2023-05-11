@@ -512,3 +512,18 @@ function dl_filename(dl)
 
     return fnName,dl_save
 end
+
+
+
+function dl_filename_old(dl)
+    dl_save =deepcopy(dl)
+    dl_save["f"]  = string(dl_save["f"].rhs)|>x->replace(x," "=>"") # rename formula
+
+
+    if "residualMethod" ∈ keys(dl_save)
+        dl_save["residualMethod"]  = string(dl_save["residualMethod"])
+    end
+    fnName = datadir("cluster", string(hash(savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,))))*".jld2")
+
+    return fnName,dl_save
+end
