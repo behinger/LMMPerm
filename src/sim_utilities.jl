@@ -504,6 +504,10 @@ function dl_filename(dl)
         dl_save["residualMethod"]  = string(dl_save["residualMethod"])
     end
 
+    if "blupMethod" ∈ keys(dl_save)
+        dl_save["blupMethod"]  = string(dl_save["blupMethod"])
+    end
+
     fnName = datadir("cluster", string(hash(savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,))))*".jld2")
 
     return fnName,dl_save
