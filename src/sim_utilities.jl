@@ -204,7 +204,12 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
         snorm = SkewNormal(0,σ_org,10)
         
         y = y .+ rand(rng,snorm-mean(snorm),length(y)) # parameterisation location != mean, thus remove (theoretical) mean
+    elseif errorDistribution == "skewed_40"
+        snorm = SkewNormal(0,σ_org,40)
         
+        y = y .+ rand(rng,snorm-mean(snorm),length(y)) # parameterisation location != mean, thus remove (theoretical) mean
+        
+    
     else
         @error "not implemented error function"
     end

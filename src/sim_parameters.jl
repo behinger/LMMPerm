@@ -76,7 +76,7 @@ function getParamList(task)
         # Varying N
         paramList = Dict(
             "statsMethod" => ["waldsT","pBoot","permutation","LRT","KenwardRoger"], # if this is "missing" we run permutation for backward compatibility
-            "errorDistribution" => ["normal","tdist","skewed"],
+            "errorDistribution" => ["normal","tdist","skewed","skewed_40"],
             "β" => [[0., 0.],[0., 0.3]],
             
             "blupMethod" => [@onlyif("statsMethod"=="permutation",ranef),

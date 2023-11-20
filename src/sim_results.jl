@@ -123,11 +123,11 @@ debug ? @show(sum(ix)) : ""
 	
 	a =  select(a[ix,:],Not(:f))
 
-	@show unique(a.test)
+	#@show unique(a.test)
 	if !("test" ∈ skip)
 		@rsubset!(a,:test !== "β")
 	end
-	@show unique(a.test)
+	#@show unique(a.test)
 	a =  @transform(a,@byrow :pval=((:pval>clip) ? clip : :pval))	
 	return a
 end
