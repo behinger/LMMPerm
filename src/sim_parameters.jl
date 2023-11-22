@@ -96,6 +96,19 @@ function getParamList(task)
                 "residualMethod" => [@onlyif("statsMethod"=="permutation",:shuffle),@onlyif("statsMethod"=="permutation",:signflip)],
                 "nSubject" => [10,30],
             )
+        elseif task == 6
+              # Varying N
+            paramList = Dict(
+                "statsMethod" => ["waldsT","pBoot","permutation"],
+                "β" => [[0., 0.],[0., 0.3]],
+                
+                "blupMethod" => [@onlyif("statsMethod"=="permutation",ranef),
+                                @onlyif("statsMethod"=="permutation",olsranef)],
+                "nSubject" => [4,10,30],    
+                "nItemsPerCondition" => [2,10,30,50],
+                "reml" => [true]
+            )
+                
         end
         return merge(default,paramList)
 end

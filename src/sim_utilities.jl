@@ -78,7 +78,7 @@ function sim_model(f;simulationCoding=DummyCoding,kwargs...)
     return simMod
 
 end
-function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwargs...)
+function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml=false,kwargs...)
     if n_workers == "slurm"
         # open as many as necessary
         println("Starting Slurmm workers, this might take some time")
@@ -123,7 +123,9 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,kwar
     println("Note: If nothing is starting, this is likely due to an error which will just freeze everything. Test it locally!")
     # parallel loop
     #@showprogress 
-    
+    if reml
+        refit!(simMod;REML=true) # needed for KenwardRoger
+    end
     @sync @distributed for k = 1:nRep
         #println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
         res = run_test(MersenneTwister(k), deepcopy(simMod);onesided=onesided,kwargs...)
