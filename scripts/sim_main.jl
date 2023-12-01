@@ -32,7 +32,7 @@ includet(srcdir("sim_parameters.jl"))
 
 @show task
 #---h0 tests
-paramList = getParamList.(1:5)
+paramList = getParamList.(1:6)
 dl_all = vcat(dict_list.(paramList)...)
 
 f1,f2,f3,f4 = defaultFormulas()
