@@ -123,7 +123,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
     println("Note: If nothing is starting, this is likely due to an error which will just freeze everything. Test it locally!")
     # parallel loop
     #@showprogress 
-    simMod = deepcopy(simMod);
+    simMod = deepcopy(simMod)
     if reml
         refit!(simMod;REML=true) # needed for KenwardRoger
     else
@@ -222,8 +222,8 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
     dat.dv .= y
 
     simMod_inst = LinearMixedModel(f, dat; contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
-    simMod_inst.optsum.maxtime = 20 # restrict per-iteration fitting time
-    simMod_inst.optsum.maxfeval = 20000
+    simMod_inst.optsum.maxtime = 0.5 # restrict per-iteration fitting time
+    simMod_inst.optsum.maxfeval = 10000
 
     fit!(simMod_inst)
 
