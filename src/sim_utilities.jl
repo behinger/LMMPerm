@@ -284,7 +284,7 @@ function run_kr(rng,simMod_instantiated;onesided=false,kwargs...)
 
     end
     
-    @show res
+    #@show res
     return res
 end
 
