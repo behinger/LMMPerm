@@ -97,13 +97,11 @@ for dl = dl_all[randperm(MersenneTwister(task),length(dl_all))]
     # only necessary once
     simMod = sim_model(f4;convertDict(dl)...)
 
-    t = @elapsed begin
-        res = run_test_distributed(nWorkers,simMod;convertDict(dl)...)
-    end
-    #@warn " \beta is actual res[1]!!"
+    res = run_test_distributed(nWorkers,simMod;convertDict(dl)...)
+    
     println("saving")
     dl_save["results"] = res
-    dl_save["runtime"] = t
+    
     @show fnName
     @tagsave(fnName, dl_save)
     println("end of loop")

@@ -70,8 +70,8 @@ end
 function sim_model(f;simulationCoding=DummyCoding,kwargs...)
        dat = sim_model_getData(;kwargs...)
        simMod = LinearMixedModel(f, dat; contrasts=Dict(:age=>simulationCoding(),:stimType=>simulationCoding(),:condition=>simulationCoding()))
-       simMod.optsum.maxtime = 0.5 # restrict per-iteration fitting time
-       simMod.optsum.maxfeval = 10000
+       simMod.optsum.maxtime = 10 # restrict per-iteration fitting time
+       simMod.optsum.maxfeval = 20000
    
     fit!(simMod)
 
@@ -115,6 +115,9 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
     )
     statResult1 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1)) # if onesided testing is activated, we get twosided + two onesided results
     statResult2 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1))
+
+
+    time = SharedArray{Float64}(nRep)
     @everywhere @quickactivate "LMMPerm"
     @everywhere include(srcdir("sim_utilities.jl");)
     @everywhere include(srcdir("permutationtest_be.jl");)
@@ -131,7 +134,10 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
     end
     @sync @distributed for k = 1:nRep
         #println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
-        res = run_test(MersenneTwister(k), deepcopy(simMod);onesided=onesided,kwargs...)
+        time[k] = @elapsed begin
+            res = run_test(MersenneTwister(k), deepcopy(simMod);onesided=onesided,kwargs...)
+        end
+
         
 
 
@@ -158,10 +164,10 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
     labels = [:twosided, :lesser,:greater]
     for k = 1: (onesided ? 3 : 1)
         df = vcat(df,vcat(
-            DataFrame(Dict(:pval => statResult1[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default",:seed =>5000 .+ (1:nRep),:side=>labels[k])),
-            DataFrame(Dict(:pval => statResult1[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default",:seed =>5000 .+ (1:nRep),:side=>labels[k])),
-            DataFrame(Dict(:pval => statResult2[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default2",:seed =>5000 .+ (1:nRep),:side=>labels[k])),
-            DataFrame(Dict(:pval => statResult2[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default2",:seed =>5000 .+ (1:nRep),:side=>labels[k])))
+            DataFrame(Dict(:pval => statResult1[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k])),
+            DataFrame(Dict(:pval => statResult1[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k])),
+            DataFrame(Dict(:pval => statResult2[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k])),
+            DataFrame(Dict(:pval => statResult2[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k])))
         )
     end
     
@@ -170,6 +176,8 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
         df.test[df.test .== "default"] .= "β"
         df.test[df.test .== "default2"] .= "z"
     end
+
+    df.runtime = time
     println("exiting function")
     return df[df.pval .!= -1,:]
 
@@ -349,8 +357,8 @@ function run_LRT(rng,simMod_instantiated;onesided=false,analysisCoding=DummyCodi
     dat.dv .= simMod_instantiated.y
 
     simMod_reduced = LinearMixedModel(f_reduced, dat; contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
-    simMod_reduced.optsum.maxtime = 0.5 # restrict per-iteration fitting time
-    simMod_reduced.optsum.maxfeval = 10000
+    simMod_reduced.optsum.maxtime = 10 # restrict per-iteration fitting time
+    simMod_reduced.optsum.maxfeval = 20000
 
     fit!(simMod_reduced)
 
