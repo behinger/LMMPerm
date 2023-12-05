@@ -102,7 +102,10 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
     @everywhere Pkg.activate(".")
     @everywhere using DrWatson
     @everywhere @quickactivate "LMMPerm"
-    @everywhere include(srcdir("using_packages.jl"))
+    @everywhere using MixedModelsSim
+    @everywhere using Random
+    @everywhere using MixedModels
+    @everywhere using MixedModelsPermutations
 
 
     statResult1 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1)) # if onesided testing is activated, we get twosided + two onesided results

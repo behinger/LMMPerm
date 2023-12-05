@@ -23,7 +23,7 @@ end
 using DrWatson
 quickactivate(pwd(),"LMMPerm")
 
-using Revise,Random,TimerOutputs
+using Revise,Random,TimerOutputs,Distributed, MixedModelsSim,Random, MixedModels, MixedModelsPermutations
 includet(srcdir("sim_utilities.jl"))
 includet(srcdir("sim_parameters.jl"))
 #include(srcdir("permutationtest_be.jl"))
