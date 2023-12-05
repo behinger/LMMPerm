@@ -164,20 +164,22 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
     labels = [:twosided, :lesser,:greater]
     for k = 1: (onesided ? 3 : 1)
         df = vcat(df,vcat(
-            DataFrame(Dict(:pval => statResult1[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k])),
-            DataFrame(Dict(:pval => statResult1[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k])),
-            DataFrame(Dict(:pval => statResult2[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k])),
-            DataFrame(Dict(:pval => statResult2[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k])))
+            DataFrame(Dict(:pval => statResult1[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k]),:runtime=>time),
+            DataFrame(Dict(:pval => statResult1[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k]),:runtime=>time),
+            DataFrame(Dict(:pval => statResult2[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k]),:runtime=>time),
+            DataFrame(Dict(:pval => statResult2[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k]),:runtime=>time))
         )
     end
     
+    # we use -1 to identify the permutation case
     if statResult2[1,1,1] !=-1.
         # permutation
         df.test[df.test .== "default"] .= "β"
         df.test[df.test .== "default2"] .= "z"
     end
 
-    df.runtime = time
+    
+    # in the for loop above we create more values than we needed (except for permutation test) thus we remove them here again.
     println("exiting function")
     return df[df.pval .!= -1,:]
 
