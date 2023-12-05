@@ -15,7 +15,7 @@ ENV["LMER"] = "afex::lmer_alt"
 using JellyMe4
 using RCall
 
-include("sim_parameters.jl")
+include(srcdir("sim_parameters.jl"))
 include(srcdir("permutationtest_be.jl"))
 convertDict = x-> [Symbol(d.first) => d.second for d in x]
 
@@ -97,6 +97,11 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
             )
     end
     println("worker started")    
+    
+    @everywhere using Pkg
+    @everywhere Pkg.activate(".")
+    @everywhere using DrWatson
+    @everywhere @quickactivate "LMMPerm"
     @everywhere include(srcdir("using_packages.jl"))
 
 
@@ -105,7 +110,7 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
 
 
     time = SharedArray{Float64}(nRep)
-    @everywhere @quickactivate "LMMPerm"
+    
     @everywhere include(srcdir("sim_utilities.jl");)
     @everywhere include(srcdir("permutationtest_be.jl");)
     
