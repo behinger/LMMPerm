@@ -40,34 +40,36 @@ f1,f2,f3,f4 = defaultFormulas()
 ##---
 if 1 == 0
     # local testing area :)
-##---
-paramList = getParamList(1)
+    ##---
+    paramList = getParamList(1)
 
-dl = dict_list(paramList)[111]
-#dl["imbalance"] = "trial"
-#dl["statsMethod"] = "KenwardRoger"
-#dl["nPerm"] = 100
-#dl["nSubject"] = 30
-#dl["nItemsPerCondition"] = 50
-#dl["σ"] = 0.01
-#dl["f"] = f2
-#dl["residualMethod"] = :shuffle
-#dl["inflationMethod"] = MixedModelsPermutations.inflation_factor
-#dl["σs"] = [[0.,0.]]#,[0.,0.]]
-simMod = sim_model(f4;convertDict(dl)...)
-res = run_test(MersenneTwister(2),simMod; onesided=true,convertDict(dl)...)
+    dl = dict_list(paramList)[105]
+    #dl["imbalance"] = "trial"
+    #dl["statsMethod"] = "KenwardRoger"
+    dl["nPerm"] = 100
+    dl["nRep"] = 10
+    #dl["nSubject"] = 30
+    #dl["nItemsPerCondition"] = 50
+    #dl["σ"] = 0.01
+    #dl["f"] = f2
+    #dl["residualMethod"] = :shuffle
+    #dl["inflationMethod"] = MixedModelsPermutations.inflation_factor
+    #dl["σs"] = [[0.,0.]]#,[0.,0.]]
+    simMod = sim_model(f4;convertDict(dl)...)
+    res = run_test(MersenneTwister(1),simMod; onesided=true,convertDict(dl)...)
 
+    res = run_test_distributed(2,simMod;convertDict(dl)...)
 
-##--
+    ##--
 
-loopKey = "statsMethod"
+    loopKey = "statsMethod"
 
-for (k,v) = enumerate(paramList[loopKey])
-    p = deepcopy(dl)
-    p[loopKey] = v
-    @show v
-    @time run_test(MersenneTwister(2),simMod; onesided=true,convertDict(p)...)
-end
+    for (k,v) = enumerate(paramList[loopKey])
+        p = deepcopy(dl)
+        p[loopKey] = v
+        @show v
+        @time run_test(MersenneTwister(2),simMod; onesided=true,convertDict(p)...)
+    end
 
 end
 

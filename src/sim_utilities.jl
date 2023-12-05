@@ -96,23 +96,10 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
                 enable_threaded_blas = true,
             )
     end
-    println("worker started")
-    # activate environment
-    eval(macroexpand(Distributed, quote
-        @everywhere using Pkg
-    end))
+    println("worker started")    
+    @everywhere include(srcdir("using_packages.jl"))
 
-    @everywhere Pkg.activate(".")
-    # load packages on distributed
-    eval(
-        macroexpand(
-            Distributed,
-            quote
-                @everywhere using DrWatson, MixedModelsSim,
-                    Random, MixedModels, MixedModelsPermutations
-            end,
-        ),
-    )
+
     statResult1 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1)) # if onesided testing is activated, we get twosided + two onesided results
     statResult2 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1))
 
@@ -164,10 +151,10 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
     labels = [:twosided, :lesser,:greater]
     for k = 1: (onesided ? 3 : 1)
         df = vcat(df,vcat(
-            DataFrame(Dict(:pval => statResult1[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k]),:runtime=>time),
-            DataFrame(Dict(:pval => statResult1[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k]),:runtime=>time),
-            DataFrame(Dict(:pval => statResult2[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k]),:runtime=>time),
-            DataFrame(Dict(:pval => statResult2[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k]),:runtime=>time))
+            DataFrame(Dict(:pval => statResult1[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k],:runtime=>time)),
+            DataFrame(Dict(:pval => statResult1[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k],:runtime=>time)),
+            DataFrame(Dict(:pval => statResult2[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k],:runtime=>time)),
+            DataFrame(Dict(:pval => statResult2[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k],:runtime=>time)))
         )
     end
     
