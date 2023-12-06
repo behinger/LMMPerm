@@ -97,17 +97,22 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
             )
     end
     println("worker started")    
-    
-    @everywhere using Pkg
+        # activate environment
+        eval(macroexpand(Distributed, quote
+        @everywhere using Pkg
+    end))
+
     @everywhere Pkg.activate(".")
-    @everywhere using DrWatson
-    @everywhere @quickactivate "LMMPerm"
-    @everywhere using MixedModelsSim
-    @everywhere using Random
-    @everywhere using MixedModels
-    @everywhere using MixedModelsPermutations
-
-
+    # load packages on distributed
+    eval(
+        macroexpand(
+            Distributed,
+            quote
+                @everywhere using DrWatson, MixedModelsSim,Random, MixedModels, MixedModelsPermutations
+            end,
+        ),
+    )
+    
     statResult1 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1)) # if onesided testing is activated, we get twosided + two onesided results
     statResult2 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1))
 
