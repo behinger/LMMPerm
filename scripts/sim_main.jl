@@ -24,6 +24,10 @@ using DrWatson
 quickactivate(pwd(),"LMMPerm")
 
 using Revise,Random,TimerOutputs,Distributed, MixedModelsSim,Random, MixedModels, MixedModelsPermutations
+using Arrow
+using TimeZones
+using Pkg
+Pkg.precompile()
 includet(srcdir("sim_utilities.jl"))
 includet(srcdir("sim_parameters.jl"))
 #include(srcdir("permutationtest_be.jl"))
