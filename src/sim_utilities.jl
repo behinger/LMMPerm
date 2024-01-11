@@ -528,7 +528,7 @@ function dl_filename(dl)
         dl_save["blupMethod"]  = string(dl_save["blupMethod"])
     end
 
-    fnName = datadir("cluster", string(hash(savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,))))*".jld2")
+    fnName = datadir("cluster_warnings", string(hash(savename("type1",dl_save, "jld2",allowedtypes=(Array,Float64,Integer,String,DataType,))))*".jld2")
 
     return fnName,dl_save
 end
