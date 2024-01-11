@@ -23,7 +23,7 @@ end
 using DrWatson
 quickactivate(pwd(),"LMMPerm")
 
-using Revise,Random,TimerOutputs,Distributed, MixedModelsSim,Random, MixedModels, MixedModelsPermutations
+using Revise,Random,TimerOutputs,Distributed, MixedModelsSim,Random, MixedModels, MixedModelsPermutations,Suppressor
 using Arrow
 using TimeZones
 using Pkg
@@ -47,11 +47,11 @@ if 1 == 0
     ##---
     paramList = getParamList(1)
 
-    dl = dict_list(paramList)[105]
+    dl = dict_list(paramList)[106]
     #dl["imbalance"] = "trial"
     #dl["statsMethod"] = "KenwardRoger"
-    dl["nPerm"] = 100
-    dl["nRep"] = 10
+    #dl["nPerm"] = 100
+    dl["nRep"] = 50
     #dl["nSubject"] = 30
     #dl["nItemsPerCondition"] = 50
     #dl["σ"] = 0.01
@@ -62,7 +62,7 @@ if 1 == 0
     simMod = sim_model(f4;convertDict(dl)...)
     res = run_test(MersenneTwister(1),simMod; onesided=true,convertDict(dl)...)
 
-    res = run_test_distributed(2,simMod;convertDict(dl)...)
+    res = run_test_distributed(4,simMod;convertDict(dl)...)
 
     ##--
 
@@ -79,13 +79,13 @@ end
 
 
 ##---
-include(srcdir("sim_utilities.jl"))
 
 @time begin
-nWorkers= scrum ? 80 : 5#"slurm" # 10 for local job
+nWorkers= scrum ? 120 : 5#"slurm" # 10 for local job
 
 # permute the dl_all with random seed the task/batch-id - this might reduce racing conditions that two jobs work on the same task.
-for dl = dl_all[randperm(MersenneTwister(task),length(dl_all))]
+for dl = dl_all[106:106]#dl_all[randperm(MersenneTwister(task),length(dl_all))]
+    #dl["nRep"] =20
     println(dl)
     
     fnName,dl_save = dl_filename(dl)
