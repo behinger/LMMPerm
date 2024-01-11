@@ -9,6 +9,7 @@ using StatsBase
 using Distributions
 using SlurmClusterManager
 using Logging
+using Suppressor
 
 ENV["LMER"] = "lmerTest::lmer"
 ENV["LMER"] = "afex::lmer_alt"
@@ -70,10 +71,10 @@ end
 function sim_model(f;simulationCoding=DummyCoding,kwargs...)
        dat = sim_model_getData(;kwargs...)
        simMod = LinearMixedModel(f, dat; contrasts=Dict(:age=>simulationCoding(),:stimType=>simulationCoding(),:condition=>simulationCoding()))
-       simMod.optsum.maxtime = 10 # restrict per-iteration fitting time
-       simMod.optsum.maxfeval = 20000
+       simMod.optsum.maxtime = 0.5 # restrict per-iteration fitting time
+       simMod.optsum.maxfeval = 10000
    
-    fit!(simMod)
+    fit!(simMod,progress=false)
 
     return simMod
 
@@ -108,16 +109,17 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
         macroexpand(
             Distributed,
             quote
-                @everywhere using DrWatson, MixedModelsSim,Random, MixedModels, MixedModelsPermutations
+                @everywhere using DrWatson, MixedModelsSim,Random, MixedModels, MixedModelsPermutations,Suppressor, SharedArrays, LinearAlgebra
             end,
         ),
     )
-    
+    @everywhere BLAS.set_num_threads(1)
     statResult1 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1)) # if onesided testing is activated, we get twosided + two onesided results
     statResult2 = SharedArray{Float64}(nRep, length(coef(simMod)), (onesided ? 3 : 1))
 
 
     time = SharedArray{Float64}(nRep)
+    warnings = SharedArray{Int}(nRep,3)
     
     @everywhere include(srcdir("sim_utilities.jl");)
     @everywhere include(srcdir("permutationtest_be.jl");)
@@ -128,16 +130,22 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
     #@showprogress 
     simMod = deepcopy(simMod)
     if reml
-        refit!(simMod;REML=true) # needed for KenwardRoger
+        refit!(simMod;REML=true,progress=false) # needed for KenwardRoger
     else
         
     end
     @sync @distributed for k = 1:nRep
         #println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
-        time[k] = @elapsed begin
-            res = run_test(MersenneTwister(k), deepcopy(simMod);onesided=onesided,kwargs...)
+        
+        warnings_local = @capture_err begin
+            time[k] = @elapsed begin
+                global res = run_test(MersenneTwister(k), deepcopy(simMod);onesided=onesided,kwargs...)
+            end
         end
-
+        warnings[k,1] = sum(occursin.("MAXTIME_REACHED",split(warnings_local,'\n')))
+        warnings[k,2] = sum(occursin.("NLopt was roundoff limited",split(warnings_local,'\n')))
+        warnings[k,3] = sum(occursin.("MAXFEVAL_REACHED",split(warnings_local,'\n')))
+    
         
 
 
@@ -164,10 +172,10 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
     labels = [:twosided, :lesser,:greater]
     for k = 1: (onesided ? 3 : 1)
         df = vcat(df,vcat(
-            DataFrame(Dict(:pval => statResult1[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k],:runtime=>time)),
-            DataFrame(Dict(:pval => statResult1[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k],:runtime=>time)),
-            DataFrame(Dict(:pval => statResult2[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k],:runtime=>time)),
-            DataFrame(Dict(:pval => statResult2[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k],:runtime=>time)))
+            DataFrame(Dict(:pval => statResult1[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k],:runtime=>time,:warnings=>eachrow(warnings))),
+            DataFrame(Dict(:pval => statResult1[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default",:seed => (1:nRep),:side=>labels[k],:runtime=>time,:warnings=>eachrow(warnings))),
+            DataFrame(Dict(:pval => statResult2[:,1,k],:coefname=>repeat(["(Intercept)"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k],:runtime=>time,:warnings=>eachrow(warnings))),
+            DataFrame(Dict(:pval => statResult2[:,2,k],:coefname=>repeat(["condition: B"],nRep),:test=>"default2",:seed => (1:nRep),:side=>labels[k],:runtime=>time,:warnings=>eachrow(warnings))))
         )
     end
     
@@ -235,7 +243,7 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
     simMod_inst.optsum.maxtime = 0.5 # restrict per-iteration fitting time
     simMod_inst.optsum.maxfeval = 10000
 
-    fit!(simMod_inst)
+    fit!(simMod_inst,progress=false)
 
     return simMod_inst
 end
@@ -268,7 +276,7 @@ end
 function run_kr(rng,simMod_instantiated;onesided=false,kwargs...)
     dat = sim_model_getData(;kwargs...)
     # convert with JellyMe4
-    refit!(simMod_instantiated;REML=true) # needed for KenwardRoger
+    refit!(simMod_instantiated;REML=true,progress=false) # needed for KenwardRoger
     dat.dv = simMod_instantiated.y
     lme4_r = (simMod_instantiated,dat)
     with_logger(NullLogger()) do
@@ -359,10 +367,10 @@ function run_LRT(rng,simMod_instantiated;onesided=false,analysisCoding=DummyCodi
     dat.dv .= simMod_instantiated.y
 
     simMod_reduced = LinearMixedModel(f_reduced, dat; contrasts=Dict(:age=>analysisCoding(),:stimType=>analysisCoding(),:condition=>analysisCoding()))
-    simMod_reduced.optsum.maxtime = 10 # restrict per-iteration fitting time
-    simMod_reduced.optsum.maxfeval = 20000
+    simMod_reduced.optsum.maxtime = 0.5 # restrict per-iteration fitting time
+    simMod_reduced.optsum.maxfeval = 10000
 
-    fit!(simMod_reduced)
+    fit!(simMod_reduced,progress=false)
 
     res = MixedModels.likelihoodratiotest(simMod_reduced,simMod_instantiated)
     return (;Symbol("(Intercept)")=>NaN,Symbol("condition: B")=>res.pvalues[1])
@@ -470,9 +478,9 @@ function fitsignal(formula, data, signal, contrasts)
         println(i)
         if i==1
             cdata[:,formula.lhs.sym] = (signal[:,i])
-            model[1] = MixedModels.fit(MixedModel, formula, cdata, contrasts = contrasts)
+            model[1] = MixedModels.fit(MixedModel, formula, cdata, contrasts = contrasts,progress=false)
         else
-            model[1] = refit!(model[1],signal[:,i])
+            model[1] = refit!(model[1],signal[:,i],progress=false)
         end
         fits[i] = deepcopy(model[1])
     end
