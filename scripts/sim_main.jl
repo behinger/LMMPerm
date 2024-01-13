@@ -84,7 +84,7 @@ end
 nWorkers= scrum ? 120 : 5#"slurm" # 10 for local job
 
 # permute the dl_all with random seed the task/batch-id - this might reduce racing conditions that two jobs work on the same task.
-for dl = dl_all[106:106]#dl_all[randperm(MersenneTwister(task),length(dl_all))]
+for dl = dl_all[randperm(MersenneTwister(task),length(dl_all))]
     #dl["nRep"] =20
     println(dl)
     
