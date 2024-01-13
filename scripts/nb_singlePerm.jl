@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.2
+# v0.19.4
 
 using Markdown
 using InteractiveUtils
@@ -53,7 +53,7 @@ dat
 begin
 β_org = [0., 0.,0.]
 σs_org = [1,4,2.,2.,2.,2.] # ful rank
-	#σs_org = [1,4,0,0,0,0] # instable :S
+#σs_org = [1,4,0,0,0,0] # instable :S
 end
 
 # ╔═╡ 0f57c2f2-e0d0-46fe-a8f5-cc789b185cf6
@@ -124,7 +124,6 @@ begin
 	    residual_permutation=:signflip
 	    residual_method=MixedModelsPermutations.residuals
 	    blup_method=MixedModelsPermutations.ranef
-	    inflation_method=MixedModelsPermutations.inflation_factor
 	
 	    βsc, θsc = similar(morig.β), similar(morig.θ)
 	    p, k = length(βsc), length(θsc)
@@ -144,25 +143,51 @@ display(morig)
 # ╔═╡ 3c8089f3-9eb4-4f08-875c-e4f8922b9dd6
 morig
 
+# ╔═╡ ad014242-fa86-4d68-8fbc-49fdf0200c43
+
+	begin
+	inflation_method=MixedModelsPermutations.inflation_factor
+#inflation_method= (m,blups,resids)->[I ; sdest(m) ./std(resids; corrected=false)]#
+	end
+
+
+# ╔═╡ 13a37cc4-ab3f-4869-8675-02ced4a68178
+let
+			    rng = MersenneTwister(1)
+	
+		 scalings = inflation_method(morig, blups, resids)
+		
+		scalings[1] = I(3)
+		display(scalings[1] )
+		
+		β=coef(morig)#zeros((coef(morig)))
+		#β[2] = 0
+	
+		m_perm = MixedModelsPermutations.permute!(rng, deepcopy(morig);
+					β=β, 
+					blups=blups, 
+					resids=resids,
+					residual_permutation=residual_permutation, 
+					scalings=scalings)
+	 	refit!(m_perm)
+	coeftable(m_perm)
+end
+
+# ╔═╡ c9e59409-183b-4732-9666-ea4b878cea2e
+coeftable(morig)
+
+# ╔═╡ c6c69ab3-4fee-4e3a-9c7a-772dfb8b29bf
+coeftable(morig).cols
+
 # ╔═╡ de83ac6d-e4a9-46d2-87ee-21675179ed5f
-begin
-		    rng = MersenneTwister(5)
+let
+		    rng = MersenneTwister(1)
 
 	 scalings = inflation_method(morig, blups, resids)
-	display(scalings[1] * scalings[1]')
-		    # we need arrays of these for in-place operations to work across threads
-	scalings = inflation_method_cov(morig,blups,resids)	    
-	#scalings[1] = 1 ./scalings[1]
-	println("\n\ncov-scaling")
-	display(scalings[1] )
-	#chol = cholesky(scalings[1], Val(true); check=false,tol=10^-5)
-	#scalings[1] = chol.L[invperm(chol.p),:]
+	
 	#scalings[1] = I(3)
-	#println("\n\nchol.L of cov-scaling")
+	display(scalings[1] )
 	
-	#display(scalings[1] )
-	
-
 	β=coef(morig)#zeros((coef(morig)))
 	#β[2] = 0
 
@@ -173,7 +198,11 @@ begin
 				residual_permutation=residual_permutation, 
 				scalings=scalings)
  	refit!(m_perm)
+	coeftable(m_perm)
 end
+
+# ╔═╡ 56cc9877-5590-4775-b79d-c37b554c01bd
+coeftable(m_perm).cols[3]
 
 # ╔═╡ 9c89e1ce-b2f7-4fff-a239-110a518b75e2
 coef(morig)
@@ -230,7 +259,12 @@ data(datPlot) * mapping(:row,:p_response,color=:condition)*visual(Scatter)|>draw
 # ╠═162c4305-4bf8-4df2-9483-fd469126d5fb
 # ╠═b17cc188-89f6-4bfb-a126-03a192602d8b
 # ╠═3c8089f3-9eb4-4f08-875c-e4f8922b9dd6
+# ╠═ad014242-fa86-4d68-8fbc-49fdf0200c43
+# ╠═13a37cc4-ab3f-4869-8675-02ced4a68178
+# ╠═c9e59409-183b-4732-9666-ea4b878cea2e
+# ╠═c6c69ab3-4fee-4e3a-9c7a-772dfb8b29bf
 # ╠═de83ac6d-e4a9-46d2-87ee-21675179ed5f
+# ╠═56cc9877-5590-4775-b79d-c37b554c01bd
 # ╠═9c89e1ce-b2f7-4fff-a239-110a518b75e2
 # ╠═1f51b98b-b2ba-4369-a34a-4f92f0f96b14
 # ╠═0e56f07f-f4fe-4978-8275-cecf5a58a973

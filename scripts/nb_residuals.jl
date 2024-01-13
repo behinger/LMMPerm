@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.0
+# v0.19.4
 
 using Markdown
 using InteractiveUtils
@@ -41,8 +41,8 @@ using Statistics
 # ╔═╡ 72f5e910-e40d-11eb-3725-f19a95c9b3c1
 include("../src/sim_utilities.jl");
 
-# ╔═╡ 3b2dee16-4010-4602-9556-d6308ea087fb
-
+# ╔═╡ 7e406bde-971b-4fea-bc3b-ede52244fcea
+coeftable(model)
 
 # ╔═╡ 0cbf776c-8e56-4d32-8a55-da22f8bf1940
 f =  @formula(dv ~ 1 + condition  + (1+condition|subj));
@@ -91,6 +91,79 @@ nrow(dat)/nsub # number of trials per subject
 		"2"=>"blups olsranef",
 		#"3"=>"experimental"
 		],"1")
+
+# ╔═╡ 58fa0d39-65e0-4ec7-aeb0-e8bde381379a
+begin
+	function calc_results(simMod2,residual_function,residual_method)
+		H0 = coef(simMod2)
+		H0[2] = 0.0
+			
+			morig = simMod2
+			βsc, θsc = similar(morig.β), similar(morig.θ)
+		    p, k = length(βsc), length(θsc)
+		    m = deepcopy(morig)
+		
+		    β_names = (Symbol.(fixefnames(morig))..., )
+		
+		#	perm = permutation(Random.MersenneTwister(2),20, simMod2; β = H0,residual_method=residual_method,blup_method=blup_method,infla)
+		perm = []
+		for p = 1:20
+		
+		
+				resids = residual_function(simMod2)
+			if olsranef=="2"
+				blups = MixedModelsPermutations.olsranef(simMod2)
+				scalings = I(length(β))
+			else
+				blups = ranef(simMod2)
+				scalings = MixedModelsPermutations.inflation_factor(morig, blups, resids)
+								#scalings = I(length(β))
+
+				#scalings = inflation_method_cov(morig,blups,resids)
+			end
+		
+				
+				if bootPerm == "0"
+					# boot strap
+					
+					model = MixedModelsPermutations.resample!(MersenneTwister(p+1),deepcopy(morig);
+		                  blups=ranef(simMod2),
+		                  resids=residual_function(simMod2),
+		                  scalings= scalings,
+					)
+				else
+				#permutation
+		
+			global model = MixedModelsPermutations.permute!(MersenneTwister(p+1),deepcopy(morig);
+		                  β = H0,
+		                  blups=blups,
+		                  resids=resids,
+					      residual_permutation = residual_method,
+		                  scalings=scalings,
+			)
+			
+		
+				end
+			refit!(model)
+
+
+			x = coeftable(model)
+
+	
+			res=	(
+			 objective = model.objective,
+			 σ = model.σ,
+			 β = NamedTuple{β_names}(MixedModels.fixef!(βsc, model)),
+			 #se = SVector{p,Float64}(MixedModels.stderror!(βsc, model)),
+			z = DataFrame(Dict(Symbol(k) => v for (k,v) in zip(coefnames(model), x.cols[x.teststatcol]))),
+			 θ = SVector{k,Float64}(MixedModels.getθ!(θsc, model)),
+			)
+			append!(perm,[res])
+		end
+		return perm
+	end
+	
+end
 
 # ╔═╡ e132bb53-9b6c-4d61-bb45-d5d9209ff4da
 @bind reml Radio([
@@ -145,6 +218,49 @@ end;
 
 # ╔═╡ 3e6110d5-221f-4b8a-97da-10421eb70991
 simMod2 = sim_model(seed_val,reml,contrasts)
+
+# ╔═╡ b95d6d67-a625-4007-9105-0b04764be51b
+perm =  calc_results(simMod2,residual_function,residual_method);
+
+# ╔═╡ 3b2dee16-4010-4602-9556-d6308ea087fb
+vcat(DataFrame(perm).z...)[:,2]
+
+# ╔═╡ c9502de8-1103-4bfb-8339-2deff75dade4
+begin
+scatter(DataFrame(DataFrame(perm).β)[:,2],label="β")
+	scatter!(vcat(DataFrame(perm).z...)[:,2],label="z")
+	
+end
+
+# ╔═╡ 64d2509b-d94e-4e48-8f81-fa13d5f9e9be
+let	
+	Plots.plot(DataFrame(perm).σ,label="permutation")
+	hline!([1.],label="theoretical σ")
+	hline!([simMod2.σ],label="empirical σ")
+	ylims!((1. *0.6,1. *1.2))
+	ylabel!("residual σ")
+	xlabel!("permutation")
+end
+
+# ╔═╡ 1a739946-82d2-4def-a655-db6dac6d737d
+# ╠═╡ disabled = true
+#=╠═╡
+
+let
+	rep = 50
+	res = Array{Float64}(undef,rep)
+for r = 1:rep
+	simMod2 = sim_model(r,reml,contrasts)
+	perm =  calc_results(simMod2,residual_function,residual_method)
+	res[r] = mean(DataFrame(perm).σ)
+end
+	histogram(res)#,bins=0.82:0.01:100)
+	@info mean(res)
+	vline!([1.])
+	vline!([mean(res)])
+	
+end
+  ╠═╡ =#
 
 # ╔═╡ 3fb9f0ef-af34-4624-8ce6-88d71711d005
 function residuals2(model::LinearMixedModel{T}, blups::Vector{<:AbstractMatrix{T}}) where T
@@ -215,104 +331,6 @@ function inflation_method_cov(m::LinearMixedModel, blups=ranef(m), resids=residu
     return [inflation; σ / σres]
 end
 
-# ╔═╡ 58fa0d39-65e0-4ec7-aeb0-e8bde381379a
-begin
-	function calc_results(simMod2,residual_function,residual_method)
-		H0 = coef(simMod2)
-		H0[2] = 0.0
-			
-			morig = simMod2
-			βsc, θsc = similar(morig.β), similar(morig.θ)
-		    p, k = length(βsc), length(θsc)
-		    m = deepcopy(morig)
-		
-		    β_names = (Symbol.(fixefnames(morig))..., )
-		
-		#	perm = permutation(Random.MersenneTwister(2),20, simMod2; β = H0,residual_method=residual_method,blup_method=blup_method,infla)
-		perm = []
-		for p = 1:20
-		
-		
-				resids = residual_function(simMod2)
-			if olsranef=="2"
-				blups = MixedModelsPermutations.olsranef(simMod2)
-				scalings = I(length(β))
-			else
-				blups = ranef(simMod2)
-				scalings = MixedModelsPermutations.inflation_factor(morig, blups, resids)
-				scalings = inflation_method_cov(morig,blups,resids)
-			end
-		
-				
-				if bootPerm == "0"
-					# boot strap
-					
-					model = MixedModelsPermutations.resample!(MersenneTwister(p+1),deepcopy(morig);
-		                  blups=ranef(simMod2),
-		                  resids=residual_function(simMod2),
-		                  scalings= scalings,
-					)
-				else
-				#permutation
-		
-			model = MixedModelsPermutations.permute!(MersenneTwister(p+1),deepcopy(morig);
-		                  β = H0,
-		                  blups=blups,
-		                  resids=resids,
-					      residual_permutation = residual_method,
-		                  scalings=scalings,
-			)
-			
-		
-				end
-			refit!(model)
-			res=	(
-			 objective = model.objective,
-			 σ = model.σ,
-			 β = NamedTuple{β_names}(MixedModels.fixef!(βsc, model)),
-			 #se = SVector{p,Float64}(MixedModels.stderror!(βsc, model)),
-			 θ = SVector{k,Float64}(MixedModels.getθ!(θsc, model)),
-			)
-			append!(perm,[res])
-		end
-		return perm
-	end
-	
-end
-
-# ╔═╡ b95d6d67-a625-4007-9105-0b04764be51b
-perm =  calc_results(simMod2,residual_function,residual_method);
-
-# ╔═╡ 64d2509b-d94e-4e48-8f81-fa13d5f9e9be
-let	
-	Plots.plot(DataFrame(perm).σ,label="permutation")
-	hline!([1.],label="theoretical σ")
-	hline!([simMod2.σ],label="empirical σ")
-	ylims!((1. *0.6,1. *1.2))
-	ylabel!("residual σ")
-	xlabel!("permutation")
-end
-
-# ╔═╡ 1a739946-82d2-4def-a655-db6dac6d737d
-# ╠═╡ disabled = true
-#=╠═╡
-
-let
-	rep = 50
-	res = Array{Float64}(undef,rep)
-for r = 1:rep
-	simMod2 = sim_model(r,reml,contrasts)
-	perm =  calc_results(simMod2,residual_function,residual_method)
-	res[r] = mean(DataFrame(perm).σ)
-end
-	histogram(res)#,bins=0.82:0.01:100)
-	@info mean(res)
-	vline!([1.])
-	vline!([mean(res)])
-	
-end
-  ╠═╡ =#
-
 # ╔═╡ Cell order:
 # ╠═b7ac3efc-8bda-41d9-b3d5-147591bac4b4
 # ╠═72f5e910-e40d-11eb-3725-f19a95c9b3c1
@@ -321,7 +339,9 @@ end
 # ╠═eb276ed2-533a-4d40-a6df-bda77d627d3c
 # ╠═3e6110d5-221f-4b8a-97da-10421eb70991
 # ╠═58fa0d39-65e0-4ec7-aeb0-e8bde381379a
+# ╠═7e406bde-971b-4fea-bc3b-ede52244fcea
 # ╠═3b2dee16-4010-4602-9556-d6308ea087fb
+# ╠═c9502de8-1103-4bfb-8339-2deff75dade4
 # ╠═b95d6d67-a625-4007-9105-0b04764be51b
 # ╠═968e3f53-055c-4dc0-b4e3-1217e511b3b4
 # ╠═0cbf776c-8e56-4d32-8a55-da22f8bf1940
