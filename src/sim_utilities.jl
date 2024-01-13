@@ -128,18 +128,13 @@ function run_test_distributed(n_workers,simMod;nRep = missing,onesided=true,reml
     println("Note: If nothing is starting, this is likely due to an error which will just freeze everything. Test it locally!")
     # parallel loop
     #@showprogress 
-    simMod = deepcopy(simMod)
-    if reml
-        refit!(simMod;REML=true,progress=false) # needed for KenwardRoger
-    else
-        
-    end
+    
     @sync @distributed for k = 1:nRep
         #println("Thread "*string(Threads.threadid()) * "\t Running "*string(k))
         
         warnings_local = @capture_err begin
             time[k] = @elapsed begin
-                global res = run_test(MersenneTwister(k), deepcopy(simMod);onesided=onesided,kwargs...)
+                global res = run_test(MersenneTwister(k), deepcopy(simMod);onesided=onesided,reml=reml,kwargs...)
             end
         end
         warnings[k,1] = sum(occursin.("MAXTIME_REACHED",split(warnings_local,'\n')))
@@ -195,7 +190,7 @@ end
 
 # add the last one as optional - hope that works :-D
 #run_permutationtest(args...) = run_permutationtest(args...,DummyCoding()) # this looks dangerous, but I should rewrite everything anyway...
-function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  analysisCoding = DummyCoding,errorDistribution="normal",kwargs...)
+function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  analysisCoding = DummyCoding,errorDistribution="normal",reml=false,kwargs...)
     @assert all(.!ismissing.([f,β,σs]))
 
     if errorDistribution != "normal" 
@@ -243,7 +238,7 @@ function setup_simMod(rng,simMod; f = missing, β=missing,σ=1,σs=missing,  ana
     simMod_inst.optsum.maxtime = 0.5 # restrict per-iteration fitting time
     simMod_inst.optsum.maxfeval = 10000
 
-    fit!(simMod_inst,progress=false)
+    fit!(simMod_inst,progress=false,REML=reml)
 
     return simMod_inst
 end
