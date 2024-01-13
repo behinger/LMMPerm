@@ -1,4 +1,5 @@
 using DataFramesMeta
+using SharedArrays
 #using CategorialArrays
 
 function read_results(folder)
@@ -24,11 +25,19 @@ end
     end
 
 c = @rtransform(c,:p = combine(groupby(:results,["coefname","test", "side"]),Symbol("pval") => x->mean(x .<= .05)))
+c = @rtransform(c,:w = combine(groupby(:results,["coefname","test", "side"]),Symbol("warnings") => (x->sum(x[1]))=>Symbol("maxtime"),Symbol("warnings") => (x->sum(x[2]))=>Symbol("NLoptRoundoff"),
+Symbol("warnings") => (x->sum(x[3]))=>Symbol("maxfval")))
 
 	# move result table to own columns
-c = @rtransform(c,:coefname = :p.coefname,:test=:p.test,:pval=:p.pval_function,:side=:p.side)
 
-c = flatten(c,[:coefname,:test,:pval,:side])[:,Not([:p,:results])]
+c = @rtransform(c,:coefname = :p.coefname,:test=:p.test,:pval=:p.pval_function,:side=:p.side,:warn_maxtime = :w.maxtime,:warn_nlopt = :w.NLoptRoundoff,:warn_maxfval = :w.maxfval)
+
+c = flatten(c,[:coefname,:test,:pval,:side,:warn_maxfval,:warn_nlopt,:warn_maxtime])[:,Not([:w,:p,:results])]
+
+
+
+
+	# move result table to own columns
 
 	# replace missing statsmethod with permutation
 	c.statsMethod[ismissing.(c.statsMethod)] .= "permutation"
