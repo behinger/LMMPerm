@@ -50,35 +50,27 @@ include("../src/sim_results.jl")
 
 
 
-# ╔═╡ f0f33175-4e51-4c54-9491-7196d7afdca6
-TableOfContents()
-
-
-# ╔═╡ d0f13647-3cce-4f06-8109-08ad226575cd
-
-
-# ╔═╡ 124ef86d-7279-4d8b-a3e8-6d2b1286de32
-
-
 # ╔═╡ 11504df8-a9dd-4100-815d-fc705dab2a58
 
 
-# ╔═╡ 3bf7d6b9-1a31-4323-aa22-4e0eb48f6612
-ct = read_results("../data/cluster_local")
-
 # ╔═╡ be015049-85fc-4902-9145-1ecd91c3d04f
+begin
 #c = read_results("../data/cluster_v2");
 #c = read_results("../data/cluster/cluster");
-c = read_results("../data/cluster_warnings");
+c_raw = collect_results("../data/cluster_warnings");
 # read_results! => load JLD2 + update from newer files
 # read_results => only use files (should be slower..)
-
+c = read_results(c_raw)
+end
 
 # ╔═╡ b84b6e8e-f9a5-4ec7-880a-36aaad239b23
 subset(c,:f=>x->"1+condition+:((1+condition)|subj)+:((1+condition)|item)".==x, :β=>x->==([0.,0.]).(x),:σs_simple => x->x.=="1+1*a|s+1+4*a|i",:coefname => x-> x.=="condition: B",:inflationMethod => x->x.=="inflation_factor" )
 
-# ╔═╡ 6aef5557-82e7-46f7-9d18-78f296194b91
+# ╔═╡ 7c791db1-7aab-44fe-88a5-25e0c5d23caf
 
+
+# ╔═╡ 1189602f-2132-41f1-ba8d-187c2dea2822
+ct2 = read_results("../data/cluster_local")
 
 # ╔═╡ 96412e37-27a4-48c0-a560-62d6a09b9eaf
 n_simulations  = 5000 # 
@@ -98,7 +90,7 @@ end
 
 
 # ╔═╡ fce8075f-4216-429f-86d8-1e6c8612d6a2
-c.σs .== Ref([[1.0,1.0],[1.0,4.0]])
+c
 
 # ╔═╡ 30509f76-9059-4d8f-9a7f-78088c052107
 	begin
@@ -130,7 +122,7 @@ md"""
 # ╠═╡ show_logs = false
 let
 
-	c_sub,mapping_auto = plot_prep(c,clip=1,x = :f_simple,
+	c_sub,mapping_auto = plot_prep(c,x = :f_simple,
 		#color=:inflationMethod,
 		#group = :residualMethod,
 		
@@ -159,8 +151,57 @@ let
 	
 end
 
-# ╔═╡ a344fba3-a055-4bcc-b797-581c9cfd685d
-PlutoTeachingTools.question_box("I don't understand why the subject+item effect doesnt work when scaling the random slope - I think more simulations are warranted")
+# ╔═╡ 89f036d1-1fc5-46c9-bdbc-92a497aea303
+names(c)
+
+# ╔═╡ f4e0e831-af65-48b3-8411-5585f12888ad
+maximum(c.warn_maxtime)
+
+# ╔═╡ 50f2f018-0436-4527-ac11-f6cc15d64073
+c_raw.results[1]
+
+# ╔═╡ f577c098-4aea-4f44-a8e6-ec33b9533c5f
+sum(hcat(c_raw[754,:results].warnings),dims=1)/60000
+
+# ╔═╡ 992abd59-db09-44fc-9a89-dcb0d6dce83b
+ begin
+ c_warn = transform(c_raw, AsTable(:) => ByRow(t -> sum(t.results.warnings/(size(t.results,1)))) => AsTable)
+
+	 argmax(c_warn.x1)
+
+ end
+
+# ╔═╡ 1ae1b834-895f-4e2f-86c3-334fc87f141e
+let
+
+	c_sub,mapping_auto = plot_prep(c,x = :f_simple,
+		#color=:inflationMethod,
+		#group = :residualMethod,
+		y=:warn_nlopt,
+		group = :σs_simple,
+		color=:σs_simple,
+		#test=:β
+		)
+	
+	c_sub = @rorderby(c_sub,:f_simple)
+	#c_sub.σs_simple .= categorical(c_sub.σs_simple)
+	d= data(c_sub)* (mapping_auto*mapping(
+		dodge=:σs_simple
+		#row = :inflationMethod ,
+		#marker = :errorDistribution =>nonnumeric,
+	))*	(
+		#visual(Dodge,plot_fun=lines!,alpha=0.05,dodge_width=10) + 
+		visual(Dodge,plot_fun=scatter!,dodge_width=1)
+		#visual(Dodge,plot_fun=errorbars!,dodge_width=1)
+		#visual(Scatter)
+	)|>			x->draw(x,legend=(position=:left,),axis=(xlabel="analyzed by",xticklabelrotation=45.,))
+	
+	#[hlines!.(a.axis,[0.05],color=:red) for a in d.grid]
+	
+	
+	d
+	
+end
 
 # ╔═╡ 3b8b2aa7-5924-4562-9c30-cb96a7caa002
 md"""
@@ -206,8 +247,8 @@ let
 	c_sub,mapping_auto = plot_prep(c,
 		col=:nSubject=>nonnumeric,
 		x = :nItemsPerCondition,
-		#group = :errorDistribution,
-		color = :statsMethod,
+		row = :reml,
+		color = :statsMethod,clip=0.4
 
 )
 	c_sub = @rorderby(c_sub,:nItemsPerCondition)
@@ -351,16 +392,15 @@ md"""
 ## Runtime
 """
 
-# ╔═╡ b84d67f0-cf2c-4f39-a8c5-a953a7848a4f
-PlutoTeachingTools.danger("I don't  believe at the moment, that the runtime is accurate - bootstrap/permutation should be much more timeconsuming")
-
 # ╔═╡ 1d17cf90-78e6-484b-b92e-e0b7fe423695
 # ╠═╡ show_logs = false
 let
 	
 		c_sub,mapping_auto = plot_prep(c,#clip=1,
-		col=:statsMethod,y=:runtime,
+		col=:statsMethod,y=:runtime_winmean,
 			x=:nItemsPerCondition,
+			#group=:reml,
+			
 		color=:nSubject=>nonnumeric,
 		#marker=:errorDistribution
 		#group = :residualMethod,
@@ -423,6 +463,16 @@ c_sub.imbalance = string.(c_sub.imbalance)
 	
 	d
 end
+
+# ╔═╡ 6aef5557-82e7-46f7-9d18-78f296194b91
+ct = collect_results("../data/cluster_local");
+
+
+# ╔═╡ 3bf7d6b9-1a31-4323-aa22-4e0eb48f6612
+# ╠═╡ disabled = true
+#=╠═╡
+ct = read_results("../data/cluster_local")
+  ╠═╡ =#
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2262,11 +2312,8 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═f0f33175-4e51-4c54-9491-7196d7afdca6
-# ╠═d0f13647-3cce-4f06-8109-08ad226575cd
 # ╠═e7e17380-f3f1-11ec-376c-2573b605b660
 # ╠═d62f86d5-506a-4900-bfb4-bf63e6e2df1c
-# ╠═124ef86d-7279-4d8b-a3e8-6d2b1286de32
 # ╠═b4244659-a807-457c-8cf7-f236fb7dc35e
 # ╠═49d55821-cd8a-4b8a-803f-546946cc8560
 # ╠═6f193bc3-d256-447c-be4e-ceb0e46735e4
@@ -2276,6 +2323,8 @@ version = "3.5.0+0"
 # ╠═4f72b39e-c502-482c-8ead-684f15b66ed4
 # ╠═3bf7d6b9-1a31-4323-aa22-4e0eb48f6612
 # ╠═be015049-85fc-4902-9145-1ecd91c3d04f
+# ╠═7c791db1-7aab-44fe-88a5-25e0c5d23caf
+# ╠═1189602f-2132-41f1-ba8d-187c2dea2822
 # ╠═6aef5557-82e7-46f7-9d18-78f296194b91
 # ╠═96412e37-27a4-48c0-a560-62d6a09b9eaf
 # ╠═059f7c46-feb7-4235-a4d3-b12a250b2a80
@@ -2286,11 +2335,16 @@ version = "3.5.0+0"
 # ╟─885625fc-20ac-4e45-821e-0f8c4dbb4094
 # ╟─2f9fd26c-3669-4227-9ff3-ba34d1973ad5
 # ╠═ae452bd8-3dca-4ece-aadd-797988766995
-# ╟─a344fba3-a055-4bcc-b797-581c9cfd685d
+# ╠═89f036d1-1fc5-46c9-bdbc-92a497aea303
+# ╠═f4e0e831-af65-48b3-8411-5585f12888ad
+# ╠═50f2f018-0436-4527-ac11-f6cc15d64073
+# ╠═f577c098-4aea-4f44-a8e6-ec33b9533c5f
+# ╠═992abd59-db09-44fc-9a89-dcb0d6dce83b
+# ╠═1ae1b834-895f-4e2f-86c3-334fc87f141e
 # ╟─3b8b2aa7-5924-4562-9c30-cb96a7caa002
-# ╟─0f7ef5db-1a78-44a9-bdce-07eafff99666
+# ╠═0f7ef5db-1a78-44a9-bdce-07eafff99666
 # ╟─923d4662-89d3-43ce-af26-32c5d6597b3a
-# ╟─d59ea437-5a45-4627-81da-1557c0e1f1b7
+# ╠═d59ea437-5a45-4627-81da-1557c0e1f1b7
 # ╟─89674bba-675b-4efc-9616-839ef7a1787c
 # ╟─e51fe9b4-7d5f-4a3c-b6b0-1676c243a9a6
 # ╟─6f27f007-06f1-4fcb-a714-93aa9d3ca3bd
@@ -2298,8 +2352,7 @@ version = "3.5.0+0"
 # ╟─35ddcbd0-36e4-46de-9604-6c528d6d3aa2
 # ╟─8d47a304-1264-4f60-9f53-72a8ade13bea
 # ╟─08d1defe-6443-4150-9013-105d9e98a76e
-# ╟─b84d67f0-cf2c-4f39-a8c5-a953a7848a4f
-# ╟─1d17cf90-78e6-484b-b92e-e0b7fe423695
+# ╠═1d17cf90-78e6-484b-b92e-e0b7fe423695
 # ╟─150bc006-d9d6-48dc-9d5e-78ab8df8fd6b
 # ╟─b5507851-2018-41a6-929c-b067686abd1a
 # ╟─00000000-0000-0000-0000-000000000001

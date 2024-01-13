@@ -26,7 +26,7 @@ function defaultParameters()
         "residualMethod" => [@onlyif("statsMethod" == "permutation", :shuffle)],# @onlyif("statsMethod"=="permutation",:signflip)
         "inflationMethod" => [@onlyif("statsMethod" == "permutation", MixedModelsPermutations.inflation_factor)],#, "noScaling"],
         "σ" => 1.0,
-        "reml" => false,
+        #"reml" => false,
     )
 end
 function getParamList(task)

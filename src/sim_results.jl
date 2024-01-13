@@ -28,6 +28,8 @@ function read_results(c::DataFrame)
 
     c = @rtransform(c, :r = combine(groupby(:results, ["coefname", "test", "side"]), Symbol("runtime") => (x -> quantile(x, 0.05)) => Symbol("r_low"),
         Symbol("runtime") => (x -> quantile(x, 0.5)) => Symbol("r_median"),
+        Symbol("runtime") => (x -> mean(x)) => Symbol("r_mean"),
+        Symbol("runtime") => (x -> mean(winsor(x, prop=0.2))) => Symbol("r_winmean"),
         Symbol("runtime") => (x -> quantile(x, 0.95)) => Symbol("r_high")))
 
     c = @rtransform(c, :w = combine(groupby(:results, ["coefname", "test", "side"]), Symbol("warnings") => (x -> sum(x[1])) => Symbol("maxtime"), Symbol("warnings") => (x -> sum(x[2])) => Symbol("NLoptRoundoff"),
@@ -36,9 +38,10 @@ function read_results(c::DataFrame)
     # move result table to own columns
 
     c = @rtransform(c, :coefname = :p.coefname, :test = :p.test, :pval = :p.pval_function, :side = :p.side,
-        :warn_maxtime = :w.maxtime, :warn_nlopt = :w.NLoptRoundoff, :warn_maxfval = :w.maxfval, :runtime_median = :r.r_median, :runtime_low = :r.r_low, :runtime_high = :r.r_high)
+        :warn_maxtime = :w.maxtime, :warn_nlopt = :w.NLoptRoundoff, :warn_maxfval = :w.maxfval,
+        :runtime_median = :r.r_median, :runtime_mean = :r.r_mean, :runtime_winmean = :r.r_winmean, :runtime_low = :r.r_low, :runtime_high = :r.r_high)
 
-    c = flatten(c, [:coefname, :test, :pval, :side, :warn_maxfval, :warn_nlopt, :warn_maxtime, :runtime_median, :runtime_low, :runtime_high])[:, Not([:r, :w, :p, :results])]
+    c = flatten(c, [:coefname, :test, :pval, :side, :warn_maxfval, :warn_nlopt, :warn_maxtime, :runtime_median, :runtime_low, :runtime_high, :runtime_mean, :runtime_winmean])[:, Not([:r, :w, :p, :results])]
 
 
 
@@ -101,6 +104,7 @@ end
 function simpleDefaultParameters()
 
     def = DataFrame(Ref(dict_list(defaultParameters())[1]))
+    def["reml"] = false
     @transform!(def, @byrow(:f_simple = simpleFormula(:f)),
         @byrow(:σs_simple = simpleσs(:σs)))
 
