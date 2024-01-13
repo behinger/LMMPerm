@@ -90,7 +90,7 @@ for dl = dl_all[randperm(MersenneTwister(task),length(dl_all))]
     
     fnName,dl_save = dl_filename(dl)
 
-    if isfile(fnName)
+    if isfile(fnName) && "reml" ∉ keys(dl)
         # don't calculate again
         println("!!!! already finished: "* fnName)
         continue
